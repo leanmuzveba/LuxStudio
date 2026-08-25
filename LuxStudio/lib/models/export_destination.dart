@@ -57,4 +57,18 @@ class BrandingPreset {
     required this.description,
     this.enabled = false,
   });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'label': label,
+        'description': description,
+        'enabled': enabled,
+      };
+
+  factory BrandingPreset.fromJson(Map<String, dynamic> json) => BrandingPreset(
+        id: json['id'] as String,
+        label: json['label'] as String,
+        description: json['description'] as String,
+        enabled: json['enabled'] as bool,
+      );
 }

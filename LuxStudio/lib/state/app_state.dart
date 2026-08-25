@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/ai_clip.dart';
@@ -5,6 +7,7 @@ import '../models/export_destination.dart';
 import '../models/processing_step.dart';
 import '../models/transcript_segment.dart';
 import '../models/video_project.dart';
+import '../services/project_store.dart';
 
 /// App-wide state for the LuxStudio flow, shared across the four screens
 /// via a single [ChangeNotifier] (see main.dart for how it's provided).
@@ -13,6 +16,10 @@ import '../models/video_project.dart';
 /// linear and small enough that a plain ChangeNotifier plus
 /// [AnimatedBuilder]/[ListenableBuilder] keeps the example dependency-free.
 class AppState extends ChangeNotifier {
+  AppState({ProjectStore? projectStore}) : _projectStore = projectStore ?? ProjectStore();
+
+  final ProjectStore _projectStore;
+
   VideoProject? project;
 
   /// Which pipeline stage the import screen is currently animating.
@@ -51,17 +58,17 @@ class AppState extends ChangeNotifier {
     ),
   ];
 
-  final List<String> generatedCaptions = const [
+  List<String> generatedCaptions = [
     "You weren't made to carry this alone. 🙏 Full message linked in bio.",
-    "This 45 seconds might change how you see this week. #faith #sermon",
-    "Watch till the end — the last line hits different.",
+    'This 45 seconds might change how you see this week. #faith #sermon',
+    'Watch till the end — the last line hits different.',
   ];
 
   void startImport(VideoProject newProject) {
     project = newProject;
     processingStageIndex = 0;
     processingComplete = false;
-    notifyListeners();
+    _notifyAndSave();
   }
 
   void advanceProcessingStage() {
@@ -71,7 +78,7 @@ class AppState extends ChangeNotifier {
       processingComplete = true;
       _seedTranscriptAndClips();
     }
-    notifyListeners();
+    _notifyAndSave();
   }
 
   void setActiveTool(EditorTool tool) {
@@ -82,13 +89,13 @@ class AppState extends ChangeNotifier {
   void updateTranscriptText(String segmentId, String newText) {
     final segment = transcript.firstWhere((s) => s.id == segmentId);
     segment.text = newText;
-    notifyListeners();
+    _notifyAndSave();
   }
 
   void toggleMarkForCut(String segmentId) {
     final segment = transcript.firstWhere((s) => s.id == segmentId);
     segment.isMarkedForCut = !segment.isMarkedForCut;
-    notifyListeners();
+    _notifyAndSave();
   }
 
   void chooseClip(AiClip clip) {
@@ -97,7 +104,7 @@ class AppState extends ChangeNotifier {
       ..clear()
       ..add(ExportPlatform.reels);
     selectedCaptionIndex = 0;
-    notifyListeners();
+    _notifyAndSave();
   }
 
   void toggleDestination(ExportPlatform platform) {
@@ -108,18 +115,78 @@ class AppState extends ChangeNotifier {
     } else {
       selectedDestinations.add(platform);
     }
-    notifyListeners();
+    _notifyAndSave();
   }
 
   void selectCaption(int index) {
     selectedCaptionIndex = index;
-    notifyListeners();
+    _notifyAndSave();
   }
 
   void toggleBranding(String id) {
     final preset = brandingPresets.firstWhere((p) => p.id == id);
     preset.enabled = !preset.enabled;
+    _notifyAndSave();
+  }
+
+  /// Loads the most recently active project (if any) from disk, so the
+  /// user can pick up where they left off after an unexpected close.
+  /// Silently does nothing if there's nothing to recover — see
+  /// [ProjectStore]'s doc for why this never throws.
+  Future<void> tryRecoverLastProject() async {
+    final snapshot = await _projectStore.loadLast();
+    if (snapshot == null) return;
+
+    project = snapshot.project;
+    transcript
+      ..clear()
+      ..addAll(snapshot.transcript);
+    suggestedClips
+      ..clear()
+      ..addAll(snapshot.suggestedClips);
+    selectedClip = snapshot.selectedClipId == null
+        ? null
+        : _findClip(snapshot.selectedClipId!);
+    brandingPresets
+      ..clear()
+      ..addAll(snapshot.brandingPresets);
+    selectedCaptionIndex = snapshot.selectedCaptionIndex;
+    generatedCaptions = snapshot.generatedCaptions;
+    selectedDestinations
+      ..clear()
+      ..addAll(snapshot.selectedDestinations);
+    processingStageIndex = snapshot.processingStageIndex;
+    processingComplete = snapshot.processingComplete;
     notifyListeners();
+  }
+
+  AiClip? _findClip(String id) {
+    for (final clip in suggestedClips) {
+      if (clip.id == id) return clip;
+    }
+    return null;
+  }
+
+  void _notifyAndSave() {
+    notifyListeners();
+    unawaited(_autosave());
+  }
+
+  Future<void> _autosave() async {
+    final currentProject = project;
+    if (currentProject == null) return;
+    await _projectStore.save(ProjectSnapshot(
+      project: currentProject,
+      transcript: transcript,
+      suggestedClips: suggestedClips,
+      selectedClipId: selectedClip?.id,
+      brandingPresets: brandingPresets,
+      selectedCaptionIndex: selectedCaptionIndex,
+      generatedCaptions: generatedCaptions,
+      selectedDestinations: selectedDestinations,
+      processingStageIndex: processingStageIndex,
+      processingComplete: processingComplete,
+    ));
   }
 
   void _seedTranscriptAndClips() {

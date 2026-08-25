@@ -22,6 +22,24 @@ class TranscriptSegment {
 
   String get timeLabel => '${_fmt(start)} – ${_fmt(end)}';
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'startMs': start.inMilliseconds,
+        'endMs': end.inMilliseconds,
+        'text': text,
+        'isSilence': isSilence,
+        'isMarkedForCut': isMarkedForCut,
+      };
+
+  factory TranscriptSegment.fromJson(Map<String, dynamic> json) => TranscriptSegment(
+        id: json['id'] as String,
+        start: Duration(milliseconds: json['startMs'] as int),
+        end: Duration(milliseconds: json['endMs'] as int),
+        text: json['text'] as String,
+        isSilence: json['isSilence'] as bool? ?? false,
+        isMarkedForCut: json['isMarkedForCut'] as bool? ?? false,
+      );
+
   static String _fmt(Duration d) {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');

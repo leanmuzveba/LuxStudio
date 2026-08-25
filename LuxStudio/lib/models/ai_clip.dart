@@ -19,6 +19,24 @@ class AiClip {
 
   Duration get duration => end - start;
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'startMs': start.inMilliseconds,
+        'endMs': end.inMilliseconds,
+        'viralScore': viralScore,
+        'reason': reason,
+      };
+
+  factory AiClip.fromJson(Map<String, dynamic> json) => AiClip(
+        id: json['id'] as String,
+        title: json['title'] as String,
+        start: Duration(milliseconds: json['startMs'] as int),
+        end: Duration(milliseconds: json['endMs'] as int),
+        viralScore: json['viralScore'] as int,
+        reason: json['reason'] as String,
+      );
+
   String get timeRangeLabel => '${_fmt(start)} – ${_fmt(end)}';
 
   String get durationLabel {
