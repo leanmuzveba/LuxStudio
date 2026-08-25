@@ -1,6 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 
 import '../main.dart';
+import '../models/transcript_segment.dart';
+import '../models/video_project.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/gradient_button.dart';
@@ -13,8 +18,73 @@ import '../widgets/transcript_list.dart';
 /// AI Cuts / Overlays) driving a swappable bottom panel, a scrubber
 /// timeline showing audio chunks & silence gaps, and — in the Captions
 /// tab — the full editable transcript.
-class VideoEditorScreen extends StatelessWidget {
+///
+/// Owns the [VideoPlayerController] for the project's [VideoProject.workingPath]
+/// (recreated if that path changes, e.g. once silence removal produces a
+/// new trimmed file) so play/pause and timeline-tap-to-seek both work
+/// against one real, live player.
+class VideoEditorScreen extends StatefulWidget {
   const VideoEditorScreen({super.key});
+
+  @override
+  State<VideoEditorScreen> createState() => _VideoEditorScreenState();
+}
+
+class _VideoEditorScreenState extends State<VideoEditorScreen> {
+  VideoPlayerController? _controller;
+  String? _controllerPath;
+  Duration _position = Duration.zero;
+
+  @override
+  void dispose() {
+    _controller?.removeListener(_onControllerUpdate);
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  void _ensureController(String path) {
+    if (_controllerPath == path) return;
+    _controller?.removeListener(_onControllerUpdate);
+    _controller?.dispose();
+
+    _controllerPath = path;
+    final controller = VideoPlayerController.file(File(path));
+    _controller = controller;
+    controller.addListener(_onControllerUpdate);
+    controller.initialize().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  void _onControllerUpdate() {
+    if (!mounted) return;
+    final controller = _controller;
+    if (controller == null) return;
+    setState(() => _position = controller.value.position);
+  }
+
+  void _togglePlayback() {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+    if (controller.value.isPlaying) {
+      controller.pause();
+    } else {
+      controller.play();
+    }
+  }
+
+  void _seekTo(Duration position) {
+    _controller?.seekTo(position);
+  }
+
+  /// The transcript segment containing the current playback position, so
+  /// the timeline strip can highlight it.
+  String? _currentSegmentId(List<TranscriptSegment> segments) {
+    for (final segment in segments) {
+      if (_position >= segment.start && _position < segment.end) return segment.id;
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +103,8 @@ class VideoEditorScreen extends StatelessWidget {
       body: AnimatedBuilder(
         animation: appState,
         builder: (context, _) {
-          if (appState.project == null) {
+          final project = appState.project;
+          if (project == null) {
             return const Center(
               child: Text(
                 'No project loaded yet — go import a video first.',
@@ -41,10 +112,17 @@ class VideoEditorScreen extends StatelessWidget {
               ),
             );
           }
+          _ensureController(project.workingPath);
           return Column(
             children: [
-              Expanded(child: _PreviewPane(appState: appState)),
-              _buildTimelineArea(context, appState),
+              Expanded(
+                child: _PreviewPane(
+                  project: project,
+                  controller: _controller,
+                  onTogglePlay: _togglePlayback,
+                ),
+              ),
+              _buildTimelineArea(context, appState, project),
               _ToolBar(
                 active: appState.activeTool,
                 onSelect: appState.setActiveTool,
@@ -57,7 +135,7 @@ class VideoEditorScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTimelineArea(BuildContext context, AppState appState) {
+  Widget _buildTimelineArea(BuildContext context, AppState appState, VideoProject project) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(Gaps.md, Gaps.sm, Gaps.md, Gaps.sm),
       child: Column(
@@ -65,7 +143,9 @@ class VideoEditorScreen extends StatelessWidget {
         children: [
           TimelineStrip(
             segments: appState.transcript,
-            totalDuration: appState.project!.processedDuration,
+            totalDuration: project.processedDuration,
+            highlightedSegmentId: _currentSegmentId(appState.transcript),
+            onTapSegment: (segment) => _seekTo(segment.start),
           ),
           const SizedBox(height: Gaps.sm),
           SizedBox(
@@ -79,12 +159,21 @@ class VideoEditorScreen extends StatelessWidget {
 }
 
 class _PreviewPane extends StatelessWidget {
-  final AppState appState;
+  final VideoProject project;
+  final VideoPlayerController? controller;
+  final VoidCallback onTogglePlay;
 
-  const _PreviewPane({required this.appState});
+  const _PreviewPane({
+    required this.project,
+    required this.controller,
+    required this.onTogglePlay,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final playerController = controller;
+    final ready = playerController?.value.isInitialized ?? false;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Gaps.lg, vertical: Gaps.sm),
       child: Center(
@@ -97,38 +186,54 @@ class _PreviewPane extends StatelessWidget {
               border: Border.all(color: AppColors.border),
             ),
             clipBehavior: Clip.antiAlias,
-            child: Stack(
-              alignment: Alignment.center,
-              fit: StackFit.expand,
-              children: [
-                Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0xFF23212B), Color(0xFF14131A)],
+            child: GestureDetector(
+              onTap: ready ? onTogglePlay : null,
+              child: Stack(
+                alignment: Alignment.center,
+                fit: StackFit.expand,
+                children: [
+                  if (ready)
+                    FittedBox(
+                      fit: BoxFit.cover,
+                      child: SizedBox(
+                        width: playerController!.value.size.width,
+                        height: playerController.value.size.height,
+                        child: VideoPlayer(playerController),
+                      ),
+                    )
+                  else
+                    const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0xFF23212B), Color(0xFF14131A)],
+                        ),
+                      ),
+                    ),
+                  if (!ready)
+                    const CircularProgressIndicator(color: Colors.white70)
+                  else if (!playerController!.value.isPlaying)
+                    const Icon(Icons.play_circle_fill_rounded, size: 56, color: Colors.white70),
+                  Positioned(
+                    left: 12,
+                    right: 12,
+                    bottom: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        project.fileName,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12, color: Colors.white),
+                      ),
                     ),
                   ),
-                ),
-                const Icon(Icons.play_circle_fill_rounded, size: 56, color: Colors.white70),
-                Positioned(
-                  left: 12,
-                  right: 12,
-                  bottom: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.55),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      appState.project!.fileName,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12, color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
