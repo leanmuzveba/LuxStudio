@@ -117,6 +117,25 @@ class FfmpegService {
     }
   }
 
+  /// Extracts just the audio track to [outputPath] as low-bitrate mono
+  /// AAC — small enough to send to Gemini inline for a typical sermon
+  /// length, since speech transcription doesn't need music-quality audio.
+  Future<void> extractAudio(String sourcePath, String outputPath) async {
+    final session = await FFmpegKit.executeWithArguments([
+      '-y',
+      '-i', sourcePath,
+      '-vn',
+      '-ac', '1',
+      '-b:a', '64k',
+      outputPath,
+    ]);
+    final returnCode = await session.getReturnCode();
+    if (!ReturnCode.isSuccess(returnCode)) {
+      final logs = await session.getAllLogsAsString();
+      throw StateError('ffmpeg audio extraction failed (code $returnCode): $logs');
+    }
+  }
+
   String _betweenClause(SilenceRange r) => 'between(t,${_seconds(r.start)},${_seconds(r.end)})';
 
   String _seconds(Duration d) => (d.inMilliseconds / 1000).toStringAsFixed(3);

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
@@ -9,6 +10,7 @@ import '../models/silence_range.dart';
 import '../models/transcript_segment.dart';
 import '../models/video_project.dart';
 import '../services/ffmpeg_service.dart';
+import '../services/gemini_service.dart';
 import '../services/project_store.dart';
 
 /// App-wide state for the LuxStudio flow, shared across the four screens
@@ -18,12 +20,14 @@ import '../services/project_store.dart';
 /// linear and small enough that a plain ChangeNotifier plus
 /// [AnimatedBuilder]/[ListenableBuilder] keeps the example dependency-free.
 class AppState extends ChangeNotifier {
-  AppState({ProjectStore? projectStore, FfmpegService? ffmpegService})
+  AppState({ProjectStore? projectStore, FfmpegService? ffmpegService, GeminiService? geminiService})
       : _projectStore = projectStore ?? ProjectStore(),
-        _ffmpegService = ffmpegService ?? FfmpegService();
+        _ffmpegService = ffmpegService ?? FfmpegService(),
+        _geminiService = geminiService ?? GeminiService();
 
   final ProjectStore _projectStore;
   final FfmpegService _ffmpegService;
+  final GeminiService _geminiService;
 
   VideoProject? project;
 
@@ -38,6 +42,9 @@ class AppState extends ChangeNotifier {
   bool isDetectingSilence = false;
   bool isApplyingSilenceRemoval = false;
   String? silenceError;
+
+  bool isTranscribing = false;
+  String? transcriptionError;
 
   /// Currently active bottom tool on the editor screen.
   EditorTool activeTool = EditorTool.captions;
@@ -86,7 +93,6 @@ class AppState extends ChangeNotifier {
       processingStageIndex++;
     } else {
       processingComplete = true;
-      _seedTranscriptAndClips();
     }
     _notifyAndSave();
   }
@@ -211,6 +217,36 @@ class AppState extends ChangeNotifier {
     return '${sourcePath.substring(0, dotIndex)}_trimmed${sourcePath.substring(dotIndex)}';
   }
 
+  /// Extracts the current working file's audio track and sends it to
+  /// Gemini for transcription, replacing the transcript with the result.
+  Future<void> transcribeAudio() async {
+    final currentProject = project;
+    if (currentProject == null) return;
+    isTranscribing = true;
+    transcriptionError = null;
+    notifyListeners();
+    try {
+      final audioPath = _extractedAudioPath(currentProject.sourcePath);
+      await _ffmpegService.extractAudio(currentProject.workingPath, audioPath);
+      final audioBytes = File(audioPath).readAsBytesSync();
+      final segments = await _geminiService.transcribe(audioBytes, 'audio/aac');
+      transcript
+        ..clear()
+        ..addAll(segments);
+    } catch (e) {
+      transcriptionError = e.toString();
+    } finally {
+      isTranscribing = false;
+      _notifyAndSave();
+    }
+  }
+
+  String _extractedAudioPath(String sourcePath) {
+    final dotIndex = sourcePath.lastIndexOf('.');
+    final base = dotIndex == -1 ? sourcePath : sourcePath.substring(0, dotIndex);
+    return '${base}_audio.m4a';
+  }
+
   /// Loads the most recently active project (if any) from disk, so the
   /// user can pick up where they left off after an unexpected close.
   /// Silently does nothing if there's nothing to recover — see
@@ -273,70 +309,6 @@ class AppState extends ChangeNotifier {
     ));
   }
 
-  void _seedTranscriptAndClips() {
-    transcript
-      ..clear()
-      ..addAll(_mockTranscript());
-    suggestedClips
-      ..clear()
-      ..addAll(_mockClips());
-  }
-
-  List<TranscriptSegment> _mockTranscript() {
-    final lines = <List<Object>>[
-      [0, 6, "Good morning, church. It's good to see every one of you today."],
-      [6, 8, '', true], // silence gap, collapsed in the UI
-      [8, 19, "I want to talk about something that's been on my heart all week — the idea that faith isn't the absence of fear."],
-      [19, 27, "It's choosing to move forward anyway, one step, even when your hands are shaking."],
-      [27, 29, '', true],
-      [29, 41, "Because here's the truth: nobody who's ever done anything worth doing felt fully ready when they started."],
-      [41, 52, "Noah didn't feel ready. Moses didn't feel ready. You are not required to feel ready — you're required to be willing."],
-    ];
-
-    var id = 0;
-    return lines.map((row) {
-      id++;
-      final start = Duration(seconds: row[0] as int);
-      final end = Duration(seconds: row[1] as int);
-      final isSilence = row.length > 3 && row[3] == true;
-      return TranscriptSegment(
-        id: 's$id',
-        start: start,
-        end: end,
-        text: row[2] as String,
-        isSilence: isSilence,
-      );
-    }).toList();
-  }
-
-  List<AiClip> _mockClips() {
-    return const [
-      AiClip(
-        id: 'c1',
-        title: "Faith isn't the absence of fear",
-        start: Duration(seconds: 8),
-        end: Duration(seconds: 27),
-        viralScore: 98,
-        reason: 'Strong hook + emotional payoff in first 3 seconds.',
-      ),
-      AiClip(
-        id: 'c2',
-        title: 'You are not required to feel ready',
-        start: Duration(seconds: 29),
-        end: Duration(seconds: 52),
-        viralScore: 91,
-        reason: 'Quotable closing line, high rewatch potential.',
-      ),
-      AiClip(
-        id: 'c3',
-        title: 'Good morning, church',
-        start: Duration(seconds: 0),
-        end: Duration(seconds: 6),
-        viralScore: 62,
-        reason: 'Low energy opener — works better as a Story teaser.',
-      ),
-    ];
-  }
 }
 
 enum EditorTool { captions, audio, aiCuts, overlays }

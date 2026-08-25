@@ -242,8 +242,8 @@ class _ImportProcessingScreenState extends State<ImportProcessingScreen> {
         Text('Your video is ready', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: Gaps.sm),
         Text(
-          'We trimmed ${_fmt(appState.project!.trimmedAmount)} of dead air and '
-          'found ${appState.suggestedClips.length} clips worth sharing.',
+          '${appState.project!.fileName} is imported. Head to the editor to '
+          'remove silence, generate captions, and find shareable clips.',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodyMedium,
         ),
@@ -255,12 +255,6 @@ class _ImportProcessingScreenState extends State<ImportProcessingScreen> {
         ),
       ],
     );
-  }
-
-  String _fmt(Duration d) {
-    final m = d.inMinutes.remainder(60);
-    final s = d.inSeconds.remainder(60);
-    return '${m}m ${s}s';
   }
 }
 

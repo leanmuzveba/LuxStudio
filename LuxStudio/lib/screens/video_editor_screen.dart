@@ -306,11 +306,7 @@ class _ToolPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (appState.activeTool) {
       case EditorTool.captions:
-        return TranscriptList(
-          segments: appState.transcript,
-          onEdit: (segment, text) => appState.updateTranscriptText(segment.id, text),
-          onToggleCut: (segment) => appState.toggleMarkForCut(segment.id),
-        );
+        return _CaptionsPanel(appState: appState);
       case EditorTool.audio:
         return _AudioPanel(appState: appState);
       case EditorTool.aiCuts:
@@ -318,6 +314,93 @@ class _ToolPanel extends StatelessWidget {
       case EditorTool.overlays:
         return const _OverlaysPanel();
     }
+  }
+}
+
+/// Transcribe (via Gemini) → real, editable transcript. [TranscriptList]
+/// already supports correcting text and marking lines for removal — this
+/// just decides which state to show it in.
+class _CaptionsPanel extends StatelessWidget {
+  final AppState appState;
+
+  const _CaptionsPanel({required this.appState});
+
+  @override
+  Widget build(BuildContext context) {
+    if (appState.isTranscribing) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: AppColors.accent),
+            SizedBox(height: Gaps.sm),
+            Text('Transcribing…', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          ],
+        ),
+      );
+    }
+
+    if (appState.transcript.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Gaps.md),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.closed_caption_rounded, size: 32, color: AppColors.textMuted),
+            const SizedBox(height: Gaps.sm),
+            const Text(
+              'Transcribe this recording to generate editable captions.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+            ),
+            if (appState.transcriptionError != null) ...[
+              const SizedBox(height: Gaps.sm),
+              Text(
+                appState.transcriptionError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11.5, color: Colors.redAccent),
+              ),
+            ],
+            const SizedBox(height: Gaps.md),
+            GradientButton(
+              label: 'Transcribe',
+              icon: Icons.mic_rounded,
+              expand: false,
+              onPressed: appState.transcribeAudio,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Gaps.md, vertical: Gaps.sm),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${appState.transcript.length} lines',
+                  style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                ),
+              ),
+              TextButton(
+                onPressed: appState.transcribeAudio,
+                child: const Text('Re-transcribe'),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TranscriptList(
+            segments: appState.transcript,
+            onEdit: (segment, text) => appState.updateTranscriptText(segment.id, text),
+            onToggleCut: (segment) => appState.toggleMarkForCut(segment.id),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -488,15 +571,18 @@ class _AiCutsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasClips = appState.suggestedClips.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: Gaps.md, vertical: Gaps.sm),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Gaps.md, vertical: Gaps.sm),
           child: Text(
-            'The AI already scored every moment in this sermon. Review the '
-            'full ranked list on the next screen.',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            hasClips
+                ? 'The AI already scored every moment in this sermon. Review '
+                    'the full ranked list on the next screen.'
+                : 'AI clip suggestions aren\'t available yet in this build.',
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
         ),
         Expanded(
@@ -505,7 +591,7 @@ class _AiCutsPanel extends StatelessWidget {
             child: GradientButton(
               label: 'View ${appState.suggestedClips.length} AI-suggested clips',
               icon: Icons.auto_awesome_rounded,
-              onPressed: () => Navigator.of(context).pushNamed(AppRoutes.clips),
+              onPressed: hasClips ? () => Navigator.of(context).pushNamed(AppRoutes.clips) : null,
             ),
           ),
         ),
