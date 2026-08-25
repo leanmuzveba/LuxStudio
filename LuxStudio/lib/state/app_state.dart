@@ -46,6 +46,9 @@ class AppState extends ChangeNotifier {
   bool isTranscribing = false;
   String? transcriptionError;
 
+  bool isGeneratingClips = false;
+  String? clipGenerationError;
+
   /// Currently active bottom tool on the editor screen.
   EditorTool activeTool = EditorTool.captions;
 
@@ -245,6 +248,32 @@ class AppState extends ChangeNotifier {
     final dotIndex = sourcePath.lastIndexOf('.');
     final base = dotIndex == -1 ? sourcePath : sourcePath.substring(0, dotIndex);
     return '${base}_audio.m4a';
+  }
+
+  /// Asks Gemini to find short-form clip candidates in the current
+  /// transcript, replacing any previous suggestions. Requires a
+  /// transcript — captions must be generated first.
+  Future<void> generateClipSuggestions() async {
+    if (project == null) return;
+    if (transcript.isEmpty) {
+      clipGenerationError = 'Transcribe captions first.';
+      notifyListeners();
+      return;
+    }
+    isGeneratingClips = true;
+    clipGenerationError = null;
+    notifyListeners();
+    try {
+      final clips = await _geminiService.suggestClips(transcript);
+      suggestedClips
+        ..clear()
+        ..addAll(clips);
+    } catch (e) {
+      clipGenerationError = e.toString();
+    } finally {
+      isGeneratingClips = false;
+      _notifyAndSave();
+    }
   }
 
   /// Loads the most recently active project (if any) from disk, so the

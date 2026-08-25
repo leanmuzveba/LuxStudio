@@ -17,46 +17,78 @@ class AiClipsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
-    final clips = List<AiClip>.from(appState.suggestedClips)
-      ..sort((a, b) => b.viralScore.compareTo(a.viralScore));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('AI Suggested Clips')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(Gaps.md, Gaps.sm, Gaps.md, 0),
-            child: Row(
-              children: [
-                const Icon(Icons.auto_awesome_rounded, size: 16, color: AppColors.accent),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '${clips.length} moments ranked by predicted engagement',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(Gaps.md),
-              itemCount: clips.length,
-              itemBuilder: (context, index) => Padding(
-                padding: const EdgeInsets.only(bottom: Gaps.md),
-                child: _ClipCard(
-                  clip: clips[index],
-                  rank: index + 1,
-                  onEditAndExport: () {
-                    appState.chooseClip(clips[index]);
-                    Navigator.of(context).pushNamed(AppRoutes.export);
-                  },
-                ),
-              ),
+      appBar: AppBar(
+        title: const Text('AI Suggested Clips'),
+        actions: [
+          AnimatedBuilder(
+            animation: appState,
+            builder: (context, _) => IconButton(
+              icon: appState.isGeneratingClips
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+                    )
+                  : const Icon(Icons.refresh_rounded),
+              tooltip: 'Regenerate suggestions',
+              onPressed: appState.isGeneratingClips ? null : appState.generateClipSuggestions,
             ),
           ),
         ],
+      ),
+      body: AnimatedBuilder(
+        animation: appState,
+        builder: (context, _) {
+          final clips = List<AiClip>.from(appState.suggestedClips)
+            ..sort((a, b) => b.viralScore.compareTo(a.viralScore));
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(Gaps.md, Gaps.sm, Gaps.md, 0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.auto_awesome_rounded, size: 16, color: AppColors.accent),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${clips.length} moments ranked by predicted engagement',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (appState.clipGenerationError != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Gaps.md, vertical: Gaps.sm),
+                  child: Text(
+                    appState.clipGenerationError!,
+                    style: const TextStyle(fontSize: 12.5, color: Colors.redAccent),
+                  ),
+                ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(Gaps.md),
+                  itemCount: clips.length,
+                  itemBuilder: (context, index) => Padding(
+                    padding: const EdgeInsets.only(bottom: Gaps.md),
+                    child: _ClipCard(
+                      clip: clips[index],
+                      rank: index + 1,
+                      onEditAndExport: () {
+                        appState.chooseClip(clips[index]);
+                        Navigator.of(context).pushNamed(AppRoutes.export);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

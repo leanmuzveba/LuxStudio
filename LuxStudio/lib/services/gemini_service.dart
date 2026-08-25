@@ -2,13 +2,15 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:uuid/uuid.dart';
 
+import '../models/ai_clip.dart';
 import '../models/transcript_segment.dart';
 import 'secure_settings.dart';
 
 /// Wraps the Gemini API for the AI work LuxStudio needs directly from the
-/// app (no backend): transcription now, and — in later phases — clip
-/// suggestions and social copy generation.
+/// app (no backend): transcription, clip suggestions, and — in a later
+/// phase — social copy generation.
 ///
 /// The user's own API key (entered in Settings, never hardcoded) is read
 /// fresh for each call via [SecureSettings].
@@ -64,6 +66,51 @@ speech, skip it (don't emit an element with empty text).
         start: Duration(milliseconds: ((map['startSeconds'] as num) * 1000).round()),
         end: Duration(milliseconds: ((map['endSeconds'] as num) * 1000).round()),
         text: (map['text'] as String).trim(),
+      );
+    }).toList();
+  }
+
+  /// Asks Gemini to find complete, engaging short-form clip candidates in
+  /// [transcript] (silent gaps and lines marked for cut are excluded from
+  /// what's sent, matching what the user has actually kept).
+  Future<List<AiClip>> suggestClips(List<TranscriptSegment> transcript) async {
+    final model = await _model(responseMimeType: 'application/json');
+    final lines = transcript
+        .where((s) => !s.isSilence && !s.isMarkedForCut && s.text.trim().isNotEmpty)
+        .map((s) => '[${s.start.inSeconds}s-${s.end.inSeconds}s] ${s.text}')
+        .join('\n');
+
+    final prompt = '''
+Here is a timestamped transcript of a spoken recording:
+
+$lines
+
+Identify 3 to 6 short-form clip candidates suitable for social media
+(15-90 seconds each) — look for strong openings, complete ideas, and
+memorable or quotable moments. Clips should not overlap. Start/end times
+must be seconds taken from the transcript timestamps above (start of a
+line's bracket to end of a line's bracket).
+
+Return ONLY a JSON array (no markdown, no commentary) where each element
+is exactly:
+{"title": string, "startSeconds": number, "endSeconds": number, "viralScore": integer 0-100, "reason": string}
+
+"reason" is one short sentence on why this moment works as a standalone
+clip. Order the array by viralScore, highest first.
+''';
+
+    final response = await model.generateContent([Content.text(prompt)]);
+    final decoded = _decodeJsonArray(_extractText(response));
+    const uuid = Uuid();
+    return decoded.map((entry) {
+      final map = entry as Map<String, dynamic>;
+      return AiClip(
+        id: uuid.v4(),
+        title: (map['title'] as String).trim(),
+        start: Duration(seconds: (map['startSeconds'] as num).round()),
+        end: Duration(seconds: (map['endSeconds'] as num).round()),
+        viralScore: (map['viralScore'] as num).round().clamp(0, 100),
+        reason: (map['reason'] as String).trim(),
       );
     }).toList();
   }

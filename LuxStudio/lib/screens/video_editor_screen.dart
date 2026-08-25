@@ -571,27 +571,66 @@ class _AiCutsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasTranscript = appState.transcript.isNotEmpty;
     final hasClips = appState.suggestedClips.isNotEmpty;
+
+    if (appState.isGeneratingClips) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: AppColors.accent),
+            SizedBox(height: Gaps.sm),
+            Text('Finding your best moments…', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: Gaps.md, vertical: Gaps.sm),
           child: Text(
-            hasClips
-                ? 'The AI already scored every moment in this sermon. Review '
-                    'the full ranked list on the next screen.'
-                : 'AI clip suggestions aren\'t available yet in this build.',
+            !hasTranscript
+                ? 'Transcribe captions first — the AI reads the transcript to find '
+                    'complete, engaging moments.'
+                : hasClips
+                    ? 'The AI already scored every moment in this sermon. Review '
+                        'the full ranked list on the next screen.'
+                    : 'Ready to scan this transcript for short, shareable moments.',
             style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
         ),
+        if (appState.clipGenerationError != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Gaps.md),
+            child: Text(
+              appState.clipGenerationError!,
+              style: const TextStyle(fontSize: 11.5, color: Colors.redAccent),
+            ),
+          ),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: Gaps.md),
-            child: GradientButton(
-              label: 'View ${appState.suggestedClips.length} AI-suggested clips',
-              icon: Icons.auto_awesome_rounded,
-              onPressed: hasClips ? () => Navigator.of(context).pushNamed(AppRoutes.clips) : null,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (hasClips) ...[
+                  GradientButton(
+                    label: 'View ${appState.suggestedClips.length} AI-suggested clips',
+                    icon: Icons.auto_awesome_rounded,
+                    onPressed: () => Navigator.of(context).pushNamed(AppRoutes.clips),
+                  ),
+                  const SizedBox(height: Gaps.sm),
+                ],
+                GradientButton(
+                  label: hasClips ? 'Regenerate clips' : 'Generate clips',
+                  icon: Icons.auto_awesome_rounded,
+                  onPressed: hasTranscript ? appState.generateClipSuggestions : null,
+                ),
+              ],
             ),
           ),
         ),
