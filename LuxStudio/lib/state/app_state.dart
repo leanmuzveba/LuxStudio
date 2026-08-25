@@ -49,6 +49,9 @@ class AppState extends ChangeNotifier {
   bool isGeneratingClips = false;
   String? clipGenerationError;
 
+  bool isGeneratingSocialCopy = false;
+  String? socialCopyError;
+
   /// Currently active bottom tool on the editor screen.
   EditorTool activeTool = EditorTool.captions;
 
@@ -78,11 +81,7 @@ class AppState extends ChangeNotifier {
     ),
   ];
 
-  List<String> generatedCaptions = [
-    "You weren't made to carry this alone. 🙏 Full message linked in bio.",
-    'This 45 seconds might change how you see this week. #faith #sermon',
-    'Watch till the end — the last line hits different.',
-  ];
+  List<String> generatedCaptions = [];
 
   void startImport(VideoProject newProject) {
     project = newProject;
@@ -123,6 +122,8 @@ class AppState extends ChangeNotifier {
       ..clear()
       ..add(ExportPlatform.reels);
     selectedCaptionIndex = 0;
+    generatedCaptions = [];
+    socialCopyError = null;
     _notifyAndSave();
   }
 
@@ -272,6 +273,28 @@ class AppState extends ChangeNotifier {
       clipGenerationError = e.toString();
     } finally {
       isGeneratingClips = false;
+      _notifyAndSave();
+    }
+  }
+
+  /// Asks Gemini to write ready-to-post social captions for the currently
+  /// selected clip, replacing any previous suggestions.
+  Future<void> generateSocialCopy() async {
+    final clip = selectedClip;
+    if (clip == null) return;
+    isGeneratingSocialCopy = true;
+    socialCopyError = null;
+    notifyListeners();
+    try {
+      generatedCaptions = await _geminiService.generateSocialCaptions(
+        transcript: transcript,
+        clip: clip,
+      );
+      selectedCaptionIndex = 0;
+    } catch (e) {
+      socialCopyError = e.toString();
+    } finally {
+      isGeneratingSocialCopy = false;
       _notifyAndSave();
     }
   }

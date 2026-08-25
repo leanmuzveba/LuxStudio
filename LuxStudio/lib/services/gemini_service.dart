@@ -115,6 +115,38 @@ clip. Order the array by viralScore, highest first.
     }).toList();
   }
 
+  /// Writes ready-to-post social captions (hook + short description +
+  /// hashtags, each one self-contained) for [clip], grounded in the
+  /// portion of [transcript] the clip actually covers.
+  Future<List<String>> generateSocialCaptions({
+    required List<TranscriptSegment> transcript,
+    required AiClip clip,
+  }) async {
+    final model = await _model(responseMimeType: 'application/json');
+    final clipText = transcript
+        .where((s) =>
+            !s.isSilence && s.text.trim().isNotEmpty && s.end > clip.start && s.start < clip.end)
+        .map((s) => s.text)
+        .join(' ');
+
+    final prompt = '''
+This is the transcript of a short clip titled "${clip.title}":
+
+$clipText
+
+Write 3 different ready-to-post social media captions for this clip.
+Each caption should stand alone: a short hook, a one-line description,
+and 2-4 relevant hashtags, all in one block of text under 200 characters.
+
+Return ONLY a JSON array of exactly 3 strings (no markdown, no
+commentary) — one caption per string.
+''';
+
+    final response = await model.generateContent([Content.text(prompt)]);
+    final decoded = _decodeJsonArray(_extractText(response));
+    return decoded.map((e) => (e as String).trim()).toList();
+  }
+
   String _extractText(GenerateContentResponse response) {
     final text = response.text;
     if (text == null || text.trim().isEmpty) {

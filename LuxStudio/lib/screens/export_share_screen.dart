@@ -200,41 +200,71 @@ class _CaptionPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (appState.isGeneratingSocialCopy) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: Gaps.md),
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+          ),
+        ),
+      );
+    }
+
     return Column(
-      children: List.generate(appState.generatedCaptions.length, (i) {
-        final selected = appState.selectedCaptionIndex == i;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: Gaps.sm),
-          child: GestureDetector(
-            onTap: () => appState.selectCaption(i),
-            child: Container(
-              padding: const EdgeInsets.all(Gaps.sm),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: selected ? AppColors.accent : AppColors.border, width: selected ? 1.5 : 1),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-                    size: 18,
-                    color: selected ? AppColors.accent : AppColors.textMuted,
-                  ),
-                  const SizedBox(width: Gaps.sm),
-                  Expanded(
-                    child: Text(
-                      appState.generatedCaptions[i],
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ...List.generate(appState.generatedCaptions.length, (i) {
+          final selected = appState.selectedCaptionIndex == i;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: Gaps.sm),
+            child: GestureDetector(
+              onTap: () => appState.selectCaption(i),
+              child: Container(
+                padding: const EdgeInsets.all(Gaps.sm),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: selected ? AppColors.accent : AppColors.border, width: selected ? 1.5 : 1),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                      size: 18,
+                      color: selected ? AppColors.accent : AppColors.textMuted,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: Gaps.sm),
+                    Expanded(
+                      child: Text(
+                        appState.generatedCaptions[i],
+                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
+          );
+        }),
+        if (appState.socialCopyError != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Gaps.sm),
+            child: Text(
+              appState.socialCopyError!,
+              style: const TextStyle(fontSize: 11.5, color: Colors.redAccent),
+            ),
           ),
-        );
-      }),
+        GradientButton(
+          label: appState.generatedCaptions.isEmpty ? 'Generate captions' : 'Regenerate captions',
+          icon: Icons.auto_awesome_rounded,
+          expand: false,
+          onPressed: appState.generateSocialCopy,
+        ),
+      ],
     );
   }
 }
