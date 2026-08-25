@@ -8,9 +8,50 @@ import '../models/ai_clip.dart';
 import '../models/transcript_segment.dart';
 import 'secure_settings.dart';
 
+/// Gemini is prompted for raw JSON but sometimes wraps it in a markdown
+/// code fence anyway — strip that defensively before decoding. Pure and
+/// side-effect-free so it's directly unit testable.
+List<dynamic> decodeJsonArray(String raw) {
+  var cleaned = raw.trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replaceFirst(RegExp(r'^```[a-zA-Z]*\n?'), '');
+    final fenceEnd = cleaned.lastIndexOf('```');
+    if (fenceEnd != -1) cleaned = cleaned.substring(0, fenceEnd);
+  }
+  final decoded = jsonDecode(cleaned.trim());
+  if (decoded is! List) {
+    throw FormatException('Expected a JSON array from Gemini, got: $decoded');
+  }
+  return decoded;
+}
+
+/// Maps one `{startSeconds, endSeconds, text}` entry from
+/// [GeminiService.transcribe]'s response into a [TranscriptSegment].
+TranscriptSegment transcriptSegmentFromJson(Map<String, dynamic> map, int index) {
+  return TranscriptSegment(
+    id: 't$index',
+    start: Duration(milliseconds: ((map['startSeconds'] as num) * 1000).round()),
+    end: Duration(milliseconds: ((map['endSeconds'] as num) * 1000).round()),
+    text: (map['text'] as String).trim(),
+  );
+}
+
+/// Maps one `{title, startSeconds, endSeconds, viralScore, reason}` entry
+/// from [GeminiService.suggestClips]'s response into an [AiClip].
+AiClip aiClipFromJson(Map<String, dynamic> map, String id) {
+  return AiClip(
+    id: id,
+    title: (map['title'] as String).trim(),
+    start: Duration(seconds: (map['startSeconds'] as num).round()),
+    end: Duration(seconds: (map['endSeconds'] as num).round()),
+    viralScore: (map['viralScore'] as num).round().clamp(0, 100),
+    reason: (map['reason'] as String).trim(),
+  );
+}
+
 /// Wraps the Gemini API for the AI work LuxStudio needs directly from the
-/// app (no backend): transcription, clip suggestions, and — in a later
-/// phase — social copy generation.
+/// app (no backend): transcription, clip suggestions, and social copy
+/// generation.
 ///
 /// The user's own API key (entered in Settings, never hardcoded) is read
 /// fresh for each call via [SecureSettings].
@@ -56,17 +97,11 @@ speech, skip it (don't emit an element with empty text).
       Content.multi([TextPart(prompt), DataPart(mimeType, audioBytes)]),
     ]);
 
-    final decoded = _decodeJsonArray(_extractText(response));
+    final decoded = decodeJsonArray(_extractText(response));
     var index = 0;
     return decoded.map((entry) {
-      final map = entry as Map<String, dynamic>;
       index++;
-      return TranscriptSegment(
-        id: 't$index',
-        start: Duration(milliseconds: ((map['startSeconds'] as num) * 1000).round()),
-        end: Duration(milliseconds: ((map['endSeconds'] as num) * 1000).round()),
-        text: (map['text'] as String).trim(),
-      );
+      return transcriptSegmentFromJson(entry as Map<String, dynamic>, index);
     }).toList();
   }
 
@@ -100,19 +135,11 @@ clip. Order the array by viralScore, highest first.
 ''';
 
     final response = await model.generateContent([Content.text(prompt)]);
-    final decoded = _decodeJsonArray(_extractText(response));
+    final decoded = decodeJsonArray(_extractText(response));
     const uuid = Uuid();
-    return decoded.map((entry) {
-      final map = entry as Map<String, dynamic>;
-      return AiClip(
-        id: uuid.v4(),
-        title: (map['title'] as String).trim(),
-        start: Duration(seconds: (map['startSeconds'] as num).round()),
-        end: Duration(seconds: (map['endSeconds'] as num).round()),
-        viralScore: (map['viralScore'] as num).round().clamp(0, 100),
-        reason: (map['reason'] as String).trim(),
-      );
-    }).toList();
+    return decoded
+        .map((entry) => aiClipFromJson(entry as Map<String, dynamic>, uuid.v4()))
+        .toList();
   }
 
   /// Writes ready-to-post social captions (hook + short description +
@@ -143,7 +170,7 @@ commentary) — one caption per string.
 ''';
 
     final response = await model.generateContent([Content.text(prompt)]);
-    final decoded = _decodeJsonArray(_extractText(response));
+    final decoded = decodeJsonArray(_extractText(response));
     return decoded.map((e) => (e as String).trim()).toList();
   }
 
@@ -153,21 +180,5 @@ commentary) — one caption per string.
       throw StateError('Gemini returned an empty response.');
     }
     return text;
-  }
-
-  /// Gemini is prompted for raw JSON but sometimes wraps it in a markdown
-  /// code fence anyway — strip that defensively before decoding.
-  List<dynamic> _decodeJsonArray(String raw) {
-    var cleaned = raw.trim();
-    if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replaceFirst(RegExp(r'^```[a-zA-Z]*\n?'), '');
-      final fenceEnd = cleaned.lastIndexOf('```');
-      if (fenceEnd != -1) cleaned = cleaned.substring(0, fenceEnd);
-    }
-    final decoded = jsonDecode(cleaned.trim());
-    if (decoded is! List) {
-      throw FormatException('Expected a JSON array from Gemini, got: $decoded');
-    }
-    return decoded;
   }
 }

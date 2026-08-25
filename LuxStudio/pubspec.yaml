@@ -19,11 +19,6 @@ dependencies:
   video_player: ^2.14.0
   ffmpeg_kit_flutter_new: ^4.6.2
   path_provider: ^2.1.6
-  # Pinned below 12.x: permission_handler_android 14.0.0 bumped compileSdk to
-  # 37 (for the new ACCESS_LOCAL_NETWORK permission, which this app doesn't
-  # use) and references API-37-only constants that don't compile against the
-  # installed SDK. 11.x's Android impl only needs compileSdk 34.
-  permission_handler: ^11.4.0
   share_plus: ^13.3.0
   flutter_secure_storage: ^11.0.0
   google_generative_ai: ^0.4.7

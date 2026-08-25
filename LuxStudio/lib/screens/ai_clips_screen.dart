@@ -189,7 +189,7 @@ class _ClipThumbnail extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    AppColors.scoreGradient(clip.viralScore).colors.first.withOpacity(0.35),
+                    AppColors.scoreGradient(clip.viralScore).colors.first.withValues(alpha: 0.35),
                     AppColors.surfaceSunken,
                   ],
                 ),
@@ -207,7 +207,7 @@ class _ClipThumbnail extends StatelessWidget {
                 height: 20,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.55),
+                  color: Colors.black.withValues(alpha: 0.55),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(

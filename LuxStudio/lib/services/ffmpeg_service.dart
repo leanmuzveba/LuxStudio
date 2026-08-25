@@ -5,6 +5,36 @@ import 'package:ffmpeg_kit_flutter_new/stream_information.dart';
 
 import '../models/silence_range.dart';
 
+/// Parses ffmpeg's `silencedetect` filter log output into ranges. Pure and
+/// side-effect-free (no ffmpeg session needed) so it's directly unit
+/// testable — see [FfmpegService.detectSilence] for the caller.
+List<SilenceRange> parseSilenceLog(String logs) {
+  final startPattern = RegExp(r'silence_start:\s*([\d.]+)');
+  final endPattern = RegExp(r'silence_end:\s*([\d.]+)');
+  final ranges = <SilenceRange>[];
+  double? pendingStart;
+
+  for (final line in logs.split('\n')) {
+    final startMatch = startPattern.firstMatch(line);
+    if (startMatch != null) {
+      pendingStart = double.tryParse(startMatch.group(1)!);
+      continue;
+    }
+    final endMatch = endPattern.firstMatch(line);
+    if (endMatch != null && pendingStart != null) {
+      final end = double.tryParse(endMatch.group(1)!);
+      if (end != null) {
+        ranges.add(SilenceRange(
+          start: Duration(milliseconds: (pendingStart * 1000).round()),
+          end: Duration(milliseconds: (end * 1000).round()),
+        ));
+      }
+      pendingStart = null;
+    }
+  }
+  return ranges;
+}
+
 /// Duration and pixel dimensions read from a media file via ffprobe.
 class MediaInfo {
   final Duration duration;
@@ -58,34 +88,7 @@ class FfmpegService {
       '-',
     ]);
     final logs = await session.getAllLogsAsString() ?? '';
-    return _parseSilenceLog(logs);
-  }
-
-  List<SilenceRange> _parseSilenceLog(String logs) {
-    final startPattern = RegExp(r'silence_start:\s*([\d.]+)');
-    final endPattern = RegExp(r'silence_end:\s*([\d.]+)');
-    final ranges = <SilenceRange>[];
-    double? pendingStart;
-
-    for (final line in logs.split('\n')) {
-      final startMatch = startPattern.firstMatch(line);
-      if (startMatch != null) {
-        pendingStart = double.tryParse(startMatch.group(1)!);
-        continue;
-      }
-      final endMatch = endPattern.firstMatch(line);
-      if (endMatch != null && pendingStart != null) {
-        final end = double.tryParse(endMatch.group(1)!);
-        if (end != null) {
-          ranges.add(SilenceRange(
-            start: Duration(milliseconds: (pendingStart * 1000).round()),
-            end: Duration(milliseconds: (end * 1000).round()),
-          ));
-        }
-        pendingStart = null;
-      }
-    }
-    return ranges;
+    return parseSilenceLog(logs);
   }
 
   /// Produces a new file at [outputPath] with [rangesToRemove] cut out of

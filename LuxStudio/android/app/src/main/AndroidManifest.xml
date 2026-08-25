@@ -2,12 +2,14 @@
     <!-- Gemini API calls (transcription, clip suggestions, social copy). -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
-    <!-- Media import (Android 13+ scoped media permissions). -->
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
-    <!-- Pre-Android-13 fallback for the same purpose. -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32"/>
+    <!-- No READ_MEDIA_*/READ_EXTERNAL_STORAGE permission is declared:
+         file_picker's document picker (SAF) and image_picker's own gallery
+         picker each request/manage their own scoped access internally and
+         don't need the app to hold a broad media-library permission. This
+         is also the Android 13+ recommended pattern (Photo Picker grants
+         access to just the selected item, no runtime permission needed at
+         all). Revisit only if a future feature needs to browse the wider
+         media library directly (e.g. MediaStore queries). -->
 
     <application
         android:label="luxstudio"

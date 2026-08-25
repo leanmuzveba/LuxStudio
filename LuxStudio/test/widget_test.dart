@@ -31,8 +31,8 @@ class _FakeFfmpegService extends FfmpegService {
 }
 
 /// A [MediaImportService] that "picks" a small real dummy file from a temp
-/// dir (so `File.copySync` has something real to copy) instead of opening
-/// the real native file picker, and fakes the ffprobe step too.
+/// dir (so the direct-file-copy path has something real to copy) instead
+/// of opening the real native file picker, and fakes the ffprobe step too.
 MediaImportService buildTestMediaImportService() {
   final pickedFile = File(
     '${Directory.systemTemp.createTempSync('luxstudio_test_pick_').path}/sermon.mp4',
@@ -41,7 +41,11 @@ MediaImportService buildTestMediaImportService() {
   return MediaImportService(
     ffmpegService: _FakeFfmpegService(),
     documentsDirProvider: () async => Directory.systemTemp.createTempSync('luxstudio_test_docs_'),
-    pickFilePath: () async => pickedFile.path,
+    pickFile: () async => PickedMediaFile(
+      name: 'sermon.mp4',
+      path: pickedFile.path,
+      readAsBytes: () async => pickedFile.readAsBytesSync(),
+    ),
   );
 }
 

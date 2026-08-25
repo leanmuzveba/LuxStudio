@@ -49,8 +49,8 @@ class TimelineStrip extends StatelessWidget {
                   color: segment.isSilence
                       ? AppColors.silenceGap
                       : segment.isMarkedForCut
-                          ? AppColors.textMuted.withOpacity(0.4)
-                          : AppColors.waveform.withOpacity(isHighlighted ? 1 : 0.75),
+                          ? AppColors.textMuted.withValues(alpha: 0.4)
+                          : AppColors.waveform.withValues(alpha: isHighlighted ? 1 : 0.75),
                   borderRadius: BorderRadius.circular(4),
                   border: isHighlighted
                       ? Border.all(color: Colors.white, width: 1.5)
@@ -78,7 +78,7 @@ class _MiniWaveformPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.5)
+      ..color = Colors.white.withValues(alpha: 0.5)
       ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.round;
 

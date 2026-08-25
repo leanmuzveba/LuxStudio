@@ -73,16 +73,16 @@ class _RingPainter extends CustomPainter {
 
     final sweep = 2 * math.pi * progress.clamp(0.0, 1.0);
     final rect = Rect.fromCircle(center: center, radius: radius);
-    final gradient = SweepGradient(
+    const gradient = SweepGradient(
       startAngle: -math.pi / 2,
       endAngle: -math.pi / 2 + 2 * math.pi,
-      colors: const [
+      colors: [
         AppColors.accentStart,
         AppColors.accentEnd,
         AppColors.accentStart,
       ],
-      stops: const [0.0, 0.5, 1.0],
-      transform: const GradientRotation(-math.pi / 2),
+      stops: [0.0, 0.5, 1.0],
+      transform: GradientRotation(-math.pi / 2),
     );
 
     final arcPaint = Paint()
