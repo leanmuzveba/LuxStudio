@@ -1,0 +1,37 @@
+name: luxstudio
+description: >
+  LuxStudio — an AI-assisted sermon-to-social video editor. Upload a raw
+  sermon recording, let on-device/cloud AI strip silence, clean up audio,
+  auto-caption, and surface viral-ready vertical clips, then export straight
+  to Reels, TikTok, Shorts, or Stories.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: '>=3.22.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  file_picker: ^12.1.0
+  video_player: ^2.14.0
+  ffmpeg_kit_flutter_new: ^4.6.2
+  path_provider: ^2.1.6
+  permission_handler: ^13.0.1
+  share_plus: ^13.3.0
+  flutter_secure_storage: ^11.0.0
+  google_generative_ai: ^0.4.7
+  uuid: ^4.6.0
+  image_picker: ^1.2.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  # assets:
+  #   - assets/
