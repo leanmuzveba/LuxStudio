@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:luxstudio/main.dart';
-import 'package:luxstudio/state/app_state.dart';
+import 'package:luxstudio/services/ffmpeg_service.dart';
+import 'package:luxstudio/services/media_import_service.dart';
 import 'package:luxstudio/services/project_store.dart';
+import 'package:luxstudio/state/app_state.dart';
 
 /// A fresh [AppState] backed by a temp-directory [ProjectStore], so tests
 /// never touch the real `path_provider` platform channel (which has no
@@ -18,13 +20,45 @@ AppState buildTestAppState() {
   );
 }
 
+/// Fakes ffprobe's result so tests never touch the real native plugin.
+class _FakeFfmpegService extends FfmpegService {
+  @override
+  Future<MediaInfo> probe(String path) async => const MediaInfo(
+        duration: Duration(minutes: 5),
+        width: 1080,
+        height: 1920,
+      );
+}
+
+/// A [MediaImportService] that "picks" a small real dummy file from a temp
+/// dir (so `File.copySync` has something real to copy) instead of opening
+/// the real native file picker, and fakes the ffprobe step too.
+MediaImportService buildTestMediaImportService() {
+  final pickedFile = File(
+    '${Directory.systemTemp.createTempSync('luxstudio_test_pick_').path}/sermon.mp4',
+  )..writeAsBytesSync([0]);
+
+  return MediaImportService(
+    ffmpegService: _FakeFfmpegService(),
+    documentsDirProvider: () async => Directory.systemTemp.createTempSync('luxstudio_test_docs_'),
+    pickFilePath: () async => pickedFile.path,
+  );
+}
+
 /// The app briefly shows a splash screen (an indeterminate spinner —
 /// `pumpAndSettle` would never converge on it) while it checks for a
 /// project to recover. A couple of frames is enough to let that resolve
 /// (there's nothing to recover in a fresh temp dir, and ProjectStore uses
 /// synchronous file I/O — see its doc) and the screen swap happen.
-Future<void> pumpApp(WidgetTester tester, AppState appState) async {
-  await tester.pumpWidget(LuxStudioApp(appState: appState));
+Future<void> pumpApp(
+  WidgetTester tester,
+  AppState appState, {
+  MediaImportService? mediaImportService,
+}) async {
+  await tester.pumpWidget(LuxStudioApp(
+    appState: appState,
+    mediaImportService: mediaImportService ?? buildTestMediaImportService(),
+  ));
   await tester.pump();
   await tester.pump();
 }
@@ -41,6 +75,9 @@ void main() {
     await pumpApp(tester, buildTestAppState());
 
     await tester.tap(find.text('Choose video from device'));
+    // The (fake) import does its own async work (copy + probe) before
+    // AppState.startImport is called and the pipeline UI appears.
+    await tester.pump();
     await tester.pump();
 
     expect(find.text('Processing your video'), findsOneWidget);

@@ -5,6 +5,7 @@ import 'screens/export_share_screen.dart';
 import 'screens/import_processing_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/video_editor_screen.dart';
+import 'services/media_import_service.dart';
 import 'state/app_state.dart';
 import 'theme/app_theme.dart';
 
@@ -13,12 +14,16 @@ void main() {
 }
 
 class LuxStudioApp extends StatefulWidget {
-  /// [appState] lets tests inject one backed by a fake [ProjectStore]
-  /// (real `path_provider` calls need a platform channel with no
-  /// implementation under plain `flutter test`). Defaults to a real one.
-  const LuxStudioApp({super.key, AppState? appState}) : _injectedAppState = appState;
+  /// [appState] and [mediaImportService] let tests inject fakes (real
+  /// `path_provider`/`file_picker`/ffprobe calls need platform channels
+  /// with no implementation under plain `flutter test`). Both default to
+  /// real implementations.
+  const LuxStudioApp({super.key, AppState? appState, MediaImportService? mediaImportService})
+      : _injectedAppState = appState,
+        _injectedMediaImportService = mediaImportService;
 
   final AppState? _injectedAppState;
+  final MediaImportService? _injectedMediaImportService;
 
   @override
   State<LuxStudioApp> createState() => _LuxStudioAppState();
@@ -26,6 +31,8 @@ class LuxStudioApp extends StatefulWidget {
 
 class _LuxStudioAppState extends State<LuxStudioApp> {
   late final AppState appState = widget._injectedAppState ?? AppState();
+  late final MediaImportService mediaImportService =
+      widget._injectedMediaImportService ?? MediaImportService();
   bool _checkedRecovery = false;
 
   @override
@@ -57,7 +64,7 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
             ? const _SplashScreen()
             : (appState.project != null && appState.processingComplete)
                 ? const VideoEditorScreen()
-                : const ImportProcessingScreen(),
+                : ImportProcessingScreen(mediaImportService: mediaImportService),
         routes: {
           // AppRoutes.import ('/') is handled via `home` above, not here —
           // MaterialApp forbids routes containing the default route name

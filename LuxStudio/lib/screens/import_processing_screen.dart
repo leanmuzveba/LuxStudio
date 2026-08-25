@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../main.dart';
 import '../models/processing_step.dart';
-import '../models/video_project.dart';
+import '../services/media_import_service.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/circular_step_progress.dart';
@@ -12,20 +12,30 @@ import '../widgets/gradient_button.dart';
 
 /// Screen 1 — Import & AI Processing.
 ///
-/// Two states in one screen: an idle "import a sermon" prompt, and once
-/// a file is (mock) selected, a live progress view walking through the
-/// four-stage AI pipeline before handing off to the editor.
+/// Two states in one screen: an idle "import a sermon" prompt, and once a
+/// real file is picked, copied into the app sandbox, and probed, a live
+/// progress view walking through the four-stage AI pipeline before
+/// handing off to the editor.
 class ImportProcessingScreen extends StatefulWidget {
-  const ImportProcessingScreen({super.key});
+  /// [mediaImportService] lets tests inject one with fake pick/probe
+  /// steps (real `file_picker`/ffprobe calls need platform channels with
+  /// no implementation under plain `flutter test`). Defaults to real.
+  const ImportProcessingScreen({super.key, MediaImportService? mediaImportService})
+      : _injectedMediaImportService = mediaImportService;
+
+  final MediaImportService? _injectedMediaImportService;
 
   @override
   State<ImportProcessingScreen> createState() => _ImportProcessingScreenState();
 }
 
 class _ImportProcessingScreenState extends State<ImportProcessingScreen> {
+  late final MediaImportService _mediaImportService =
+      widget._injectedMediaImportService ?? MediaImportService();
   Timer? _tickTimer;
   double _stageProgress = 0;
   bool _importing = false;
+  String? _importError;
 
   @override
   void dispose() {
@@ -33,10 +43,19 @@ class _ImportProcessingScreenState extends State<ImportProcessingScreen> {
     super.dispose();
   }
 
-  void _beginImport(AppState appState) {
-    setState(() => _importing = true);
-    appState.startImport(VideoProject.mockImport());
-    _runStage(appState);
+  Future<void> _beginImport(AppState appState) async {
+    setState(() => _importError = null);
+    try {
+      final project = await _mediaImportService.importVideo();
+      if (!mounted) return;
+      if (project == null) return; // user cancelled the picker
+
+      setState(() => _importing = true);
+      appState.startImport(project);
+      _runStage(appState);
+    } catch (e) {
+      if (mounted) setState(() => _importError = e.toString());
+    }
   }
 
   void _runStage(AppState appState) {
@@ -122,6 +141,22 @@ class _ImportProcessingScreenState extends State<ImportProcessingScreen> {
           icon: Icons.upload_rounded,
           onPressed: () => _beginImport(appState),
         ),
+        if (_importError != null) ...[
+          const SizedBox(height: Gaps.md),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline_rounded, size: 16, color: Colors.redAccent),
+              const SizedBox(width: Gaps.sm),
+              Flexible(
+                child: Text(
+                  'Import failed: $_importError',
+                  style: const TextStyle(fontSize: 12.5, color: Colors.redAccent),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
