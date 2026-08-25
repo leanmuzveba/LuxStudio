@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/ai_clip.dart';
 import '../models/export_destination.dart';
+import '../models/silence_range.dart';
 import '../models/transcript_segment.dart';
 import '../models/video_project.dart';
 
@@ -14,6 +15,7 @@ class ProjectSnapshot {
   final VideoProject project;
   final List<TranscriptSegment> transcript;
   final List<AiClip> suggestedClips;
+  final List<SilenceRange> silenceRanges;
   final String? selectedClipId;
   final List<BrandingPreset> brandingPresets;
   final int selectedCaptionIndex;
@@ -26,6 +28,7 @@ class ProjectSnapshot {
     required this.project,
     required this.transcript,
     required this.suggestedClips,
+    required this.silenceRanges,
     required this.selectedClipId,
     required this.brandingPresets,
     required this.selectedCaptionIndex,
@@ -39,6 +42,7 @@ class ProjectSnapshot {
         'project': project.toJson(),
         'transcript': transcript.map((s) => s.toJson()).toList(),
         'suggestedClips': suggestedClips.map((c) => c.toJson()).toList(),
+        'silenceRanges': silenceRanges.map((r) => r.toJson()).toList(),
         'selectedClipId': selectedClipId,
         'brandingPresets': brandingPresets.map((b) => b.toJson()).toList(),
         'selectedCaptionIndex': selectedCaptionIndex,
@@ -55,6 +59,9 @@ class ProjectSnapshot {
             .toList(),
         suggestedClips: (json['suggestedClips'] as List)
             .map((e) => AiClip.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        silenceRanges: (json['silenceRanges'] as List? ?? [])
+            .map((e) => SilenceRange.fromJson(e as Map<String, dynamic>))
             .toList(),
         selectedClipId: json['selectedClipId'] as String?,
         brandingPresets: (json['brandingPresets'] as List)

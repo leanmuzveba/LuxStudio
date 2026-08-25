@@ -5,8 +5,10 @@ import 'package:flutter/foundation.dart';
 import '../models/ai_clip.dart';
 import '../models/export_destination.dart';
 import '../models/processing_step.dart';
+import '../models/silence_range.dart';
 import '../models/transcript_segment.dart';
 import '../models/video_project.dart';
+import '../services/ffmpeg_service.dart';
 import '../services/project_store.dart';
 
 /// App-wide state for the LuxStudio flow, shared across the four screens
@@ -16,9 +18,12 @@ import '../services/project_store.dart';
 /// linear and small enough that a plain ChangeNotifier plus
 /// [AnimatedBuilder]/[ListenableBuilder] keeps the example dependency-free.
 class AppState extends ChangeNotifier {
-  AppState({ProjectStore? projectStore}) : _projectStore = projectStore ?? ProjectStore();
+  AppState({ProjectStore? projectStore, FfmpegService? ffmpegService})
+      : _projectStore = projectStore ?? ProjectStore(),
+        _ffmpegService = ffmpegService ?? FfmpegService();
 
   final ProjectStore _projectStore;
+  final FfmpegService _ffmpegService;
 
   VideoProject? project;
 
@@ -28,6 +33,11 @@ class AppState extends ChangeNotifier {
 
   final List<TranscriptSegment> transcript = [];
   final List<AiClip> suggestedClips = [];
+
+  List<SilenceRange> silenceRanges = [];
+  bool isDetectingSilence = false;
+  bool isApplyingSilenceRemoval = false;
+  String? silenceError;
 
   /// Currently active bottom tool on the editor screen.
   EditorTool activeTool = EditorTool.captions;
@@ -129,6 +139,78 @@ class AppState extends ChangeNotifier {
     _notifyAndSave();
   }
 
+  /// Runs silence detection against the project's original sandboxed copy
+  /// (not the current working file — always the same source timeline, so
+  /// re-detecting after edits doesn't compound against a previous trim).
+  Future<void> detectSilence() async {
+    final currentProject = project;
+    if (currentProject == null) return;
+    isDetectingSilence = true;
+    silenceError = null;
+    notifyListeners();
+    try {
+      silenceRanges = await _ffmpegService.detectSilence(currentProject.sourcePath);
+    } catch (e) {
+      silenceError = e.toString();
+    } finally {
+      isDetectingSilence = false;
+      _notifyAndSave();
+    }
+  }
+
+  void toggleSilenceRangeAccepted(int index) {
+    if (index < 0 || index >= silenceRanges.length) return;
+    silenceRanges[index].accepted = !silenceRanges[index].accepted;
+    _notifyAndSave();
+  }
+
+  /// Cuts every accepted range out of the original source, closes the
+  /// gaps, and points the project at the resulting file. Re-running this
+  /// (e.g. after toggling which ranges are accepted) overwrites the same
+  /// trimmed output rather than trimming an already-trimmed file.
+  Future<void> applySilenceRemoval() async {
+    final currentProject = project;
+    if (currentProject == null) return;
+    final accepted = silenceRanges.where((r) => r.accepted).toList();
+
+    isApplyingSilenceRemoval = true;
+    silenceError = null;
+    notifyListeners();
+    try {
+      final outputPath = _trimmedPath(currentProject.sourcePath);
+      await _ffmpegService.removeRanges(
+        sourcePath: currentProject.sourcePath,
+        outputPath: outputPath,
+        rangesToRemove: accepted,
+      );
+      final removed = accepted.fold<Duration>(Duration.zero, (sum, r) => sum + r.duration);
+      currentProject.workingPath = outputPath;
+      currentProject.processedDuration = currentProject.rawDuration - removed;
+    } catch (e) {
+      silenceError = e.toString();
+    } finally {
+      isApplyingSilenceRemoval = false;
+      _notifyAndSave();
+    }
+  }
+
+  /// Reverts to the untouched original — undoes a previously applied
+  /// silence removal.
+  void restoreOriginalAudio() {
+    final currentProject = project;
+    if (currentProject == null) return;
+    currentProject.workingPath = currentProject.sourcePath;
+    currentProject.processedDuration = currentProject.rawDuration;
+    silenceRanges = [];
+    _notifyAndSave();
+  }
+
+  String _trimmedPath(String sourcePath) {
+    final dotIndex = sourcePath.lastIndexOf('.');
+    if (dotIndex == -1) return '${sourcePath}_trimmed';
+    return '${sourcePath.substring(0, dotIndex)}_trimmed${sourcePath.substring(dotIndex)}';
+  }
+
   /// Loads the most recently active project (if any) from disk, so the
   /// user can pick up where they left off after an unexpected close.
   /// Silently does nothing if there's nothing to recover — see
@@ -144,6 +226,7 @@ class AppState extends ChangeNotifier {
     suggestedClips
       ..clear()
       ..addAll(snapshot.suggestedClips);
+    silenceRanges = snapshot.silenceRanges;
     selectedClip = snapshot.selectedClipId == null
         ? null
         : _findClip(snapshot.selectedClipId!);
@@ -179,6 +262,7 @@ class AppState extends ChangeNotifier {
       project: currentProject,
       transcript: transcript,
       suggestedClips: suggestedClips,
+      silenceRanges: silenceRanges,
       selectedClipId: selectedClip?.id,
       brandingPresets: brandingPresets,
       selectedCaptionIndex: selectedCaptionIndex,

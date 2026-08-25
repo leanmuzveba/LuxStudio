@@ -312,7 +312,7 @@ class _ToolPanel extends StatelessWidget {
           onToggleCut: (segment) => appState.toggleMarkForCut(segment.id),
         );
       case EditorTool.audio:
-        return const _AudioPanel();
+        return _AudioPanel(appState: appState);
       case EditorTool.aiCuts:
         return _AiCutsPanel(appState: appState);
       case EditorTool.overlays:
@@ -321,49 +321,163 @@ class _ToolPanel extends StatelessWidget {
   }
 }
 
+/// The real silence-detection review flow: scan → accept/reject each
+/// detected gap → apply (cut them out and close the gaps) → optionally
+/// restore the untouched original.
 class _AudioPanel extends StatelessWidget {
-  const _AudioPanel();
+  final AppState appState;
+
+  const _AudioPanel({required this.appState});
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: Gaps.md),
-      children: const [
-        _SliderRow(label: 'Voice level', value: 0.8),
-        _SliderRow(label: 'Background music', value: 0.25),
-        _SliderRow(label: 'Noise reduction', value: 0.6),
-        SizedBox(height: Gaps.sm),
-      ],
-    );
+    final project = appState.project;
+    if (project == null) return const SizedBox.shrink();
+
+    if (appState.isDetectingSilence) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: AppColors.accent),
+            SizedBox(height: Gaps.sm),
+            Text('Analyzing audio…', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          ],
+        ),
+      );
+    }
+
+    if (appState.silenceRanges.isEmpty) {
+      return _buildEmptyState(context);
+    }
+
+    return _buildReviewList(context, project);
   }
-}
 
-class _SliderRow extends StatelessWidget {
-  final String label;
-  final double value;
-
-  const _SliderRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: Gaps.md),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: AppColors.accent,
-              inactiveTrackColor: AppColors.surfaceRaised,
-              thumbColor: Colors.white,
-              overlayShape: SliderComponentShape.noOverlay,
+          const Icon(Icons.graphic_eq_rounded, size: 32, color: AppColors.textMuted),
+          const SizedBox(height: Gaps.sm),
+          const Text(
+            'Scan this recording for silent or near-silent gaps to trim.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+          ),
+          if (appState.silenceError != null) ...[
+            const SizedBox(height: Gaps.sm),
+            Text(
+              appState.silenceError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11.5, color: Colors.redAccent),
             ),
-            child: Slider(value: value, onChanged: (_) {}),
+          ],
+          const SizedBox(height: Gaps.md),
+          GradientButton(
+            label: 'Detect silence',
+            icon: Icons.search_rounded,
+            expand: false,
+            onPressed: appState.detectSilence,
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildReviewList(BuildContext context, VideoProject project) {
+    final ranges = appState.silenceRanges;
+    final acceptedCount = ranges.where((r) => r.accepted).length;
+    final applied = project.workingPath != project.sourcePath;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Gaps.md, vertical: Gaps.sm),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '$acceptedCount of ${ranges.length} gaps selected',
+                  style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                ),
+              ),
+              TextButton(
+                onPressed: appState.isDetectingSilence ? null : appState.detectSilence,
+                child: const Text('Re-scan'),
+              ),
+            ],
+          ),
+        ),
+        if (appState.silenceError != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Gaps.md),
+            child: Text(
+              appState.silenceError!,
+              style: const TextStyle(fontSize: 11.5, color: Colors.redAccent),
+            ),
+          ),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: Gaps.md),
+            itemCount: ranges.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 4),
+            itemBuilder: (context, index) {
+              final range = ranges[index];
+              return CheckboxListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                value: range.accepted,
+                onChanged: (_) => appState.toggleSilenceRangeAccepted(index),
+                controlAffinity: ListTileControlAffinity.leading,
+                activeColor: AppColors.accent,
+                title: Text(
+                  '${_fmt(range.start)} – ${_fmt(range.end)}',
+                  style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                ),
+                subtitle: Text(
+                  '${(range.duration.inMilliseconds / 1000).toStringAsFixed(1)}s',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                ),
+              );
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(Gaps.md, Gaps.sm, Gaps.md, Gaps.sm),
+          child: Row(
+            children: [
+              Expanded(
+                child: GradientButton(
+                  label: appState.isApplyingSilenceRemoval
+                      ? 'Removing…'
+                      : 'Apply — remove silence',
+                  icon: Icons.content_cut_rounded,
+                  onPressed: appState.isApplyingSilenceRemoval || acceptedCount == 0
+                      ? null
+                      : appState.applySilenceRemoval,
+                ),
+              ),
+              if (applied) ...[
+                const SizedBox(width: Gaps.sm),
+                TextButton(
+                  onPressed: appState.restoreOriginalAudio,
+                  child: const Text('Restore'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _fmt(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 }
 
