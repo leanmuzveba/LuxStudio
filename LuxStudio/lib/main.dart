@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'screens/ai_clips_screen.dart';
 import 'screens/export_share_screen.dart';
 import 'screens/import_processing_screen.dart';
+import 'screens/settings_screen.dart';
 import 'screens/video_editor_screen.dart';
 import 'state/app_state.dart';
 import 'theme/app_theme.dart';
@@ -41,6 +42,7 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
           AppRoutes.editor: (_) => const VideoEditorScreen(),
           AppRoutes.clips: (_) => const AiClipsScreen(),
           AppRoutes.export: (_) => const ExportShareScreen(),
+          AppRoutes.settings: (_) => const SettingsScreen(),
         },
       ),
     );
@@ -54,6 +56,7 @@ class AppRoutes {
   static const editor = '/editor';
   static const clips = '/clips';
   static const export = '/export';
+  static const settings = '/settings';
 }
 
 /// Makes the single [AppState] instance available to the whole widget

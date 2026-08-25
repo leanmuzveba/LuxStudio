@@ -18,7 +18,9 @@ void main() {
     await tester.pump();
 
     expect(find.text('Processing your video'), findsOneWidget);
-    expect(find.text('Removing silence'), findsOneWidget);
+    // "Removing silence" legitimately appears twice: once as the active-step
+    // heading, once as the first row in the step checklist below it.
+    expect(find.text('Removing silence'), findsNWidgets(2));
   });
 
   testWidgets('MaterialApp uses the dark LuxStudio theme', (tester) async {

@@ -6,7 +6,9 @@ plugins {
 
 android {
     namespace = "com.luxstudio.luxstudio"
-    compileSdk = flutter.compileSdkVersion
+    // Pinned to 36 (not flutter.compileSdkVersion) — see the compileSdk
+    // override note in the root build.gradle.kts.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
