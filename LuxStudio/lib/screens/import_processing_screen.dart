@@ -92,7 +92,9 @@ class _ImportProcessingScreenState extends State<ImportProcessingScreen> {
           IconButton(
             icon: const Icon(Icons.settings_rounded),
             tooltip: 'Settings',
-            onPressed: () => Navigator.of(context).pushNamed(AppRoutes.settings),
+            onPressed: () => Navigator.of(context)
+                .pushNamed(AppRoutes.settings)
+                .then((_) => appState.reloadBrandSettings()),
           ),
         ],
       ),

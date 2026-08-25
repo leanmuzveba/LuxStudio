@@ -4,11 +4,13 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../models/ai_clip.dart';
+import '../models/brand_settings.dart';
 import '../models/export_destination.dart';
 import '../models/processing_step.dart';
 import '../models/silence_range.dart';
 import '../models/transcript_segment.dart';
 import '../models/video_project.dart';
+import '../services/brand_settings_store.dart';
 import '../services/ffmpeg_service.dart';
 import '../services/gemini_service.dart';
 import '../services/project_store.dart';
@@ -20,16 +22,27 @@ import '../services/project_store.dart';
 /// linear and small enough that a plain ChangeNotifier plus
 /// [AnimatedBuilder]/[ListenableBuilder] keeps the example dependency-free.
 class AppState extends ChangeNotifier {
-  AppState({ProjectStore? projectStore, FfmpegService? ffmpegService, GeminiService? geminiService})
-      : _projectStore = projectStore ?? ProjectStore(),
+  AppState({
+    ProjectStore? projectStore,
+    FfmpegService? ffmpegService,
+    GeminiService? geminiService,
+    BrandSettingsStore? brandSettingsStore,
+  })  : _projectStore = projectStore ?? ProjectStore(),
         _ffmpegService = ffmpegService ?? FfmpegService(),
-        _geminiService = geminiService ?? GeminiService();
+        _geminiService = geminiService ?? GeminiService(),
+        _brandSettingsStore = brandSettingsStore ?? BrandSettingsStore();
 
   final ProjectStore _projectStore;
   final FfmpegService _ffmpegService;
   final GeminiService _geminiService;
+  final BrandSettingsStore _brandSettingsStore;
 
   VideoProject? project;
+
+  /// Global branding (logo + org name) — set in the Settings screen,
+  /// applied across exports when enabled. Refresh with
+  /// [reloadBrandSettings] after the user edits it there.
+  BrandSettings brandSettings = BrandSettings.empty;
 
   /// Which pipeline stage the import screen is currently animating.
   int processingStageIndex = 0;
@@ -297,6 +310,13 @@ class AppState extends ChangeNotifier {
       isGeneratingSocialCopy = false;
       _notifyAndSave();
     }
+  }
+
+  /// Refreshes [brandSettings] from disk — call after the user edits
+  /// branding in the Settings screen.
+  Future<void> reloadBrandSettings() async {
+    brandSettings = await _brandSettingsStore.load();
+    notifyListeners();
   }
 
   /// Loads the most recently active project (if any) from disk, so the

@@ -290,10 +290,29 @@ class _BrandingList extends StatelessWidget {
             value: preset.enabled,
             onChanged: (_) => appState.toggleBranding(preset.id),
             title: Text(preset.label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
-            subtitle: Text(preset.description, style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
+            subtitle: Text(
+              _subtitle(preset),
+              style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+            ),
           ),
         );
       }).toList(),
     );
+  }
+
+  String _subtitle(BrandingPreset preset) {
+    final brand = appState.brandSettings;
+    switch (preset.id) {
+      case 'watermark':
+        return brand.logoPath == null
+            ? 'No logo set — add one in Settings.'
+            : 'Your logo, bottom-right corner.';
+      case 'lower_third':
+        return brand.organizationName.trim().isEmpty
+            ? 'No organisation name set — add one in Settings.'
+            : '${brand.organizationName} on first 3s.';
+      default:
+        return preset.description;
+    }
   }
 }

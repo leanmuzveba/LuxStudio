@@ -44,6 +44,7 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
     appState.tryRecoverLastProject().whenComplete(() {
       if (mounted) setState(() => _checkedRecovery = true);
     });
+    appState.reloadBrandSettings();
   }
 
   @override
