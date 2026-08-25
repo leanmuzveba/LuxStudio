@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../models/ai_clip.dart';
 import '../models/brand_settings.dart';
@@ -15,6 +16,9 @@ import '../services/ffmpeg_service.dart';
 import '../services/gemini_service.dart';
 import '../services/project_store.dart';
 
+/// Where a clip export currently stands.
+enum ExportStatus { idle, processing, completed, failed }
+
 /// App-wide state for the LuxStudio flow, shared across the four screens
 /// via a single [ChangeNotifier] (see main.dart for how it's provided).
 ///
@@ -27,15 +31,18 @@ class AppState extends ChangeNotifier {
     FfmpegService? ffmpegService,
     GeminiService? geminiService,
     BrandSettingsStore? brandSettingsStore,
+    Future<Directory> Function()? documentsDirProvider,
   })  : _projectStore = projectStore ?? ProjectStore(),
         _ffmpegService = ffmpegService ?? FfmpegService(),
         _geminiService = geminiService ?? GeminiService(),
-        _brandSettingsStore = brandSettingsStore ?? BrandSettingsStore();
+        _brandSettingsStore = brandSettingsStore ?? BrandSettingsStore(),
+        _documentsDirProvider = documentsDirProvider ?? getApplicationDocumentsDirectory;
 
   final ProjectStore _projectStore;
   final FfmpegService _ffmpegService;
   final GeminiService _geminiService;
   final BrandSettingsStore _brandSettingsStore;
+  final Future<Directory> Function() _documentsDirProvider;
 
   VideoProject? project;
 
@@ -64,6 +71,10 @@ class AppState extends ChangeNotifier {
 
   bool isGeneratingSocialCopy = false;
   String? socialCopyError;
+
+  ExportStatus exportStatus = ExportStatus.idle;
+  String? exportError;
+  String? lastExportPath;
 
   /// Currently active bottom tool on the editor screen.
   EditorTool activeTool = EditorTool.captions;
@@ -137,6 +148,9 @@ class AppState extends ChangeNotifier {
     selectedCaptionIndex = 0;
     generatedCaptions = [];
     socialCopyError = null;
+    exportStatus = ExportStatus.idle;
+    exportError = null;
+    lastExportPath = null;
     _notifyAndSave();
   }
 
@@ -317,6 +331,99 @@ class AppState extends ChangeNotifier {
   Future<void> reloadBrandSettings() async {
     brandSettings = await _brandSettingsStore.load();
     notifyListeners();
+  }
+
+  /// Renders the selected clip as a 1080×1920 MP4 — trimmed to its time
+  /// range, with matching transcript lines burned in as captions and
+  /// branding applied per the enabled presets — saved under the app's
+  /// documents directory with a meaningful filename.
+  Future<void> exportSelectedClip() async {
+    final currentProject = project;
+    final clip = selectedClip;
+    if (currentProject == null || clip == null) return;
+
+    exportStatus = ExportStatus.processing;
+    exportError = null;
+    notifyListeners();
+    try {
+      final exportsDir = Directory('${(await _documentsDirProvider()).path}/exports');
+      if (!exportsDir.existsSync()) exportsDir.createSync(recursive: true);
+
+      String? subtitlesPath;
+      final clipLines = transcript
+          .where((s) => !s.isSilence && s.text.trim().isNotEmpty && s.end > clip.start && s.start < clip.end)
+          .toList();
+      if (clipLines.isNotEmpty) {
+        subtitlesPath = '${exportsDir.path}/${clip.id}.srt';
+        File(subtitlesPath).writeAsStringSync(_buildSrt(clipLines, clip.start));
+      }
+
+      final watermarkOn = _brandingEnabled('watermark');
+      final lowerThirdOn = _brandingEnabled('lower_third');
+      final logoPath = watermarkOn ? brandSettings.logoPath : null;
+      final orgName = brandSettings.organizationName.trim();
+      final lowerThirdText = (lowerThirdOn && orgName.isNotEmpty) ? orgName : null;
+
+      final outputPath =
+          '${exportsDir.path}/${_sanitizeFileName(clip.title)}_${DateTime.now().millisecondsSinceEpoch}.mp4';
+
+      await _ffmpegService.exportClip(
+        sourcePath: currentProject.workingPath,
+        start: clip.start,
+        end: clip.end,
+        outputPath: outputPath,
+        subtitlesPath: subtitlesPath,
+        logoPath: logoPath,
+        lowerThirdText: lowerThirdText,
+      );
+
+      lastExportPath = outputPath;
+      exportStatus = ExportStatus.completed;
+    } catch (e) {
+      exportError = e.toString();
+      exportStatus = ExportStatus.failed;
+    } finally {
+      _notifyAndSave();
+    }
+  }
+
+  bool _brandingEnabled(String presetId) {
+    for (final preset in brandingPresets) {
+      if (preset.id == presetId) return preset.enabled;
+    }
+    return false;
+  }
+
+  String _buildSrt(List<TranscriptSegment> segments, Duration clipStart) {
+    final buffer = StringBuffer();
+    var index = 0;
+    for (final segment in segments) {
+      final end = segment.end - clipStart;
+      if (end <= Duration.zero) continue;
+      final start = segment.start - clipStart;
+      final clampedStart = start < Duration.zero ? Duration.zero : start;
+      index++;
+      buffer
+        ..writeln(index)
+        ..writeln('${_srtTimestamp(clampedStart)} --> ${_srtTimestamp(end)}')
+        ..writeln(segment.text)
+        ..writeln();
+    }
+    return buffer.toString();
+  }
+
+  String _srtTimestamp(Duration d) {
+    final h = d.inHours.toString().padLeft(2, '0');
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final ms = d.inMilliseconds.remainder(1000).toString().padLeft(3, '0');
+    return '$h:$m:$s,$ms';
+  }
+
+  String _sanitizeFileName(String title) {
+    final safe = title.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_').replaceAll(RegExp(r'_+'), '_');
+    final trimmed = safe.replaceAll(RegExp(r'^_|_$'), '');
+    return trimmed.isEmpty ? 'clip' : trimmed;
   }
 
   /// Loads the most recently active project (if any) from disk, so the

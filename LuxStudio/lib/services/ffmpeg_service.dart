@@ -15,8 +15,8 @@ class MediaInfo {
 }
 
 /// Wraps `ffmpeg_kit_flutter_new` for the pieces LuxStudio needs: probing
-/// media metadata, silence detection/removal, and — in later phases —
-/// cropping/scaling, caption/branding burn-in, and export.
+/// media metadata, silence detection/removal, and final clip export
+/// (crop/scale, caption/branding burn-in).
 class FfmpegService {
   Future<MediaInfo> probe(String path) async {
     final session = await FFprobeKit.getMediaInformation(path);
@@ -135,6 +135,63 @@ class FfmpegService {
       throw StateError('ffmpeg audio extraction failed (code $returnCode): $logs');
     }
   }
+
+  /// Exports the [start]-[end] range of [sourcePath] as a 1080×1920
+  /// vertical clip at [outputPath] — the MVP1 primary export target.
+  /// Optionally burns in [subtitlesPath] (an SRT file, timestamps already
+  /// relative to [start]), a logo watermark ([logoPath], bottom-right),
+  /// and [lowerThirdText] (shown for the clip's first 3 seconds).
+  Future<void> exportClip({
+    required String sourcePath,
+    required Duration start,
+    required Duration end,
+    required String outputPath,
+    String? subtitlesPath,
+    String? logoPath,
+    String? lowerThirdText,
+  }) async {
+    var base = 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920';
+    if (subtitlesPath != null) {
+      base += ",subtitles='${_escapeFilterValue(subtitlesPath)}':force_style="
+          "'Fontsize=20,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=2'";
+    }
+    if (lowerThirdText != null) {
+      base += ",drawtext=text='${_escapeFilterValue(lowerThirdText)}':fontcolor=white:fontsize=36:"
+          "x=(w-text_w)/2:y=h-160:box=1:boxcolor=black@0.5:boxborderw=12:enable='between(t\\,0\\,3)'";
+    }
+
+    final args = <String>[
+      '-y',
+      '-ss', _seconds(start),
+      '-to', _seconds(end),
+      '-i', sourcePath,
+    ];
+
+    if (logoPath != null) {
+      args.addAll(['-i', logoPath]);
+      final filterComplex = '[0:v]$base[base];[1:v]scale=160:-1[logo];'
+          '[base][logo]overlay=W-w-32:H-h-32[outv]';
+      args.addAll(['-filter_complex', filterComplex, '-map', '[outv]', '-map', '0:a?']);
+    } else {
+      args.addAll(['-vf', base, '-map', '0:v', '-map', '0:a?']);
+    }
+
+    args.addAll(['-c:v', 'libx264', '-c:a', 'aac', outputPath]);
+
+    final session = await FFmpegKit.executeWithArguments(args);
+    final returnCode = await session.getReturnCode();
+    if (!ReturnCode.isSuccess(returnCode)) {
+      final logs = await session.getAllLogsAsString();
+      throw StateError('ffmpeg export failed (code $returnCode): $logs');
+    }
+  }
+
+  /// Escapes a value embedded inside a single-quoted ffmpeg filter option
+  /// (a `subtitles` path or `drawtext` string) — only single quotes need
+  /// escaping here since the surrounding quotes already protect other
+  /// special characters, and export always runs on Android (no
+  /// drive-letter colons to worry about in paths).
+  String _escapeFilterValue(String value) => value.replaceAll("'", "\\'");
 
   String _betweenClause(SilenceRange r) => 'between(t,${_seconds(r.start)},${_seconds(r.end)})';
 

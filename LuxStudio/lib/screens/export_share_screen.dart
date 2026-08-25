@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/export_destination.dart';
 import '../state/app_state.dart';
@@ -66,6 +67,32 @@ class ExportShareScreen extends StatelessWidget {
   }
 
   Widget _buildShareBar(BuildContext context, AppState appState) {
+    final status = appState.exportStatus;
+
+    String label;
+    IconData icon;
+    VoidCallback? onPressed;
+    switch (status) {
+      case ExportStatus.processing:
+        label = 'Exporting…';
+        icon = Icons.hourglass_top_rounded;
+        onPressed = null;
+      case ExportStatus.completed:
+        label = 'Share exported clip';
+        icon = Icons.ios_share_rounded;
+        onPressed = () => _share(context, appState);
+      case ExportStatus.failed:
+        label = 'Export failed — tap to retry';
+        icon = Icons.refresh_rounded;
+        onPressed = appState.exportSelectedClip;
+      case ExportStatus.idle:
+        label = appState.selectedDestinations.length == 1
+            ? 'Export for ${ExportDestination.all.firstWhere((d) => d.platform == appState.selectedDestinations.first).label}'
+            : 'Export for ${appState.selectedDestinations.length} destinations';
+        icon = Icons.movie_creation_outlined;
+        onPressed = appState.exportSelectedClip;
+    }
+
     return Container(
       padding: EdgeInsets.fromLTRB(
         Gaps.md,
@@ -77,20 +104,34 @@ class ExportShareScreen extends StatelessWidget {
         color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
-      child: GradientButton(
-        label: appState.selectedDestinations.length == 1
-            ? 'Share to ${ExportDestination.all.firstWhere((d) => d.platform == appState.selectedDestinations.first).label}'
-            : 'Share to ${appState.selectedDestinations.length} destinations',
-        icon: Icons.share_rounded,
-        onPressed: () => _confirmShare(context),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (status == ExportStatus.processing) ...[
+            const LinearProgressIndicator(color: AppColors.accent),
+            const SizedBox(height: Gaps.sm),
+          ],
+          if (appState.exportError != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: Gaps.sm),
+              child: Text(
+                appState.exportError!,
+                style: const TextStyle(fontSize: 12, color: Colors.redAccent),
+              ),
+            ),
+          GradientButton(label: label, icon: icon, onPressed: onPressed),
+        ],
       ),
     );
   }
 
-  void _confirmShare(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Exporting… you\'ll get a notification when it\'s posted.')),
-    );
+  Future<void> _share(BuildContext context, AppState appState) async {
+    final path = appState.lastExportPath;
+    if (path == null) return;
+    final caption = appState.generatedCaptions.isNotEmpty
+        ? appState.generatedCaptions[appState.selectedCaptionIndex]
+        : null;
+    await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: caption));
   }
 }
 
