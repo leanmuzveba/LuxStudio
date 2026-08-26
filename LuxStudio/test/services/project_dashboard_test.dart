@@ -35,9 +35,6 @@ ProjectSnapshot _snapshot({bool hasExported = false, bool hasClips = false}) {
     silenceRanges: const [],
     selectedClipId: null,
     brandingPresets: const [],
-    selectedCaptionIndex: 0,
-    generatedCaptions: const [],
-    selectedDestinations: const {},
   );
 }
 

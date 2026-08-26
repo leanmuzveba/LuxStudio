@@ -18,9 +18,6 @@ import '../services/ffmpeg_service.dart';
 import '../services/gemini_service.dart';
 import '../services/project_store.dart';
 
-/// Where a clip export currently stands.
-enum ExportStatus { idle, processing, completed, failed }
-
 /// App-wide state for the LuxStudio flow, shared across the four screens
 /// via a single [ChangeNotifier] (see main.dart for how it's provided).
 ///
@@ -70,15 +67,9 @@ class AppState extends ChangeNotifier {
   bool isGeneratingSocialCopy = false;
   String? socialCopyError;
 
-  ExportStatus exportStatus = ExportStatus.idle;
-  String? exportError;
-  String? lastExportPath;
-
   /// The clip the user chose to edit & export.
   AiClip? selectedClip;
 
-  final Set<ExportPlatform> selectedDestinations = {ExportPlatform.reels};
-  int selectedCaptionIndex = 0;
   final List<BrandingPreset> brandingPresets = [
     BrandingPreset(
       id: 'watermark',
@@ -100,21 +91,15 @@ class AppState extends ChangeNotifier {
     ),
   ];
 
-  List<String> generatedCaptions = [];
-
-  /// Structured social copy for [selectedClip] — the source of truth going
-  /// forward; [generatedCaptions] is still populated alongside it as a
-  /// temporary adapter for the not-yet-redesigned Export screen.
+  /// Structured social copy for [selectedClip].
   SocialCopy? socialCopy;
 
-  /// How burned-in captions are styled at export — set on the (future)
-  /// Captions screen's style picker, already wired into
-  /// [exportSelectedClip].
+  /// How burned-in captions are styled at export — set on the Captions
+  /// screen's style picker, feeds [_renderClip].
   CaptionStyle captionStyle = CaptionStyle.defaultStyle;
 
-  /// One entry per clip queued for the (future) batch Export screen,
-  /// keyed by [AiClip.id]. Not yet populated by [exportSelectedClip] —
-  /// that single-clip flow is replaced by batch export in a later phase.
+  /// One entry per clip currently in (or finished with) a batch export,
+  /// keyed by [AiClip.id]. Populated by [exportBatch]/[retryClipExport].
   Map<String, ExportJob> exportJobs = {};
 
   void updateProjectTitle(String newTitle) {
@@ -145,32 +130,8 @@ class AppState extends ChangeNotifier {
 
   void chooseClip(AiClip clip) {
     selectedClip = clip;
-    selectedDestinations
-      ..clear()
-      ..add(ExportPlatform.reels);
-    selectedCaptionIndex = 0;
-    generatedCaptions = [];
     socialCopy = null;
     socialCopyError = null;
-    exportStatus = ExportStatus.idle;
-    exportError = null;
-    lastExportPath = null;
-    _notifyAndSave();
-  }
-
-  void toggleDestination(ExportPlatform platform) {
-    if (selectedDestinations.contains(platform)) {
-      if (selectedDestinations.length > 1) {
-        selectedDestinations.remove(platform);
-      }
-    } else {
-      selectedDestinations.add(platform);
-    }
-    _notifyAndSave();
-  }
-
-  void selectCaption(int index) {
-    selectedCaptionIndex = index;
     _notifyAndSave();
   }
 
@@ -350,25 +311,12 @@ class AppState extends ChangeNotifier {
         clip: clip,
       );
       socialCopy = copy;
-      generatedCaptions = _captionOptionsFrom(copy);
-      selectedCaptionIndex = 0;
     } catch (e) {
       socialCopyError = e.toString();
     } finally {
       isGeneratingSocialCopy = false;
       _notifyAndSave();
     }
-  }
-
-  /// Adapts the new structured [SocialCopy] into the flat caption-option
-  /// list the not-yet-redesigned Export screen still shows — a temporary
-  /// bridge removed once that screen is rebuilt against [socialCopy]
-  /// directly.
-  List<String> _captionOptionsFrom(SocialCopy copy) {
-    final hashtags = copy.hashtags.map((h) => '#$h').join(' ');
-    final hook = [copy.title, copy.summary, hashtags].where((s) => s.isNotEmpty).join('\n');
-    final options = [hook, copy.description].where((s) => s.trim().isNotEmpty).toList();
-    return options;
   }
 
   /// Refreshes [brandSettings] from disk — call after the user edits
@@ -378,60 +326,91 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Renders the selected clip as a 1080×1920 MP4 — trimmed to its time
-  /// range, with matching transcript lines burned in as captions and
-  /// branding applied per the enabled presets — saved under the app's
-  /// documents directory with a meaningful filename.
-  Future<void> exportSelectedClip() async {
-    final currentProject = project;
-    final clip = selectedClip;
-    if (currentProject == null || clip == null) return;
+  /// Whether a batch export ([exportBatch]) is currently running.
+  bool isBatchExporting = false;
 
-    exportStatus = ExportStatus.processing;
-    exportError = null;
+  /// Renders every [AiClip.includeInExport] clip in [suggestedClips] as a
+  /// 1080×1920 MP4, one at a time (sequential — concurrent ffmpeg sessions
+  /// are too heavy for a phone), tracking each clip's progress in
+  /// [exportJobs] so the Export screen can show independent per-clip rows.
+  Future<void> exportBatch() async {
+    final currentProject = project;
+    if (currentProject == null) return;
+    final clips = suggestedClips.where((c) => c.includeInExport).toList();
+    if (clips.isEmpty) return;
+
+    isBatchExporting = true;
+    for (final clip in clips) {
+      exportJobs[clip.id] = const ExportJob(status: ExportJobStatus.queued);
+    }
+    notifyListeners();
+
+    for (final clip in clips) {
+      await _runClipExportJob(clip);
+    }
+
+    isBatchExporting = false;
+    notifyListeners();
+  }
+
+  /// Re-renders a single clip that previously failed (or finished) —
+  /// exposed so the Export screen can offer a retry on a failed row
+  /// without re-running the whole batch.
+  Future<void> retryClipExport(AiClip clip) => _runClipExportJob(clip);
+
+  Future<void> _runClipExportJob(AiClip clip) async {
+    exportJobs[clip.id] = const ExportJob(status: ExportJobStatus.processing);
     notifyListeners();
     try {
-      final exportsDir = Directory('${(await _documentsDirProvider()).path}/exports');
-      if (!exportsDir.existsSync()) exportsDir.createSync(recursive: true);
-
-      String? subtitlesPath;
-      final clipLines = transcript
-          .where((s) => !s.isSilence && s.text.trim().isNotEmpty && s.end > clip.start && s.start < clip.end)
-          .toList();
-      if (clipLines.isNotEmpty) {
-        subtitlesPath = '${exportsDir.path}/${clip.id}.srt';
-        File(subtitlesPath).writeAsStringSync(_buildSrt(clipLines, clip.start));
-      }
-
-      final watermarkOn = _brandingEnabled('watermark');
-      final lowerThirdOn = _brandingEnabled('lower_third');
-      final logoPath = watermarkOn ? brandSettings.logoPath : null;
-      final orgName = brandSettings.organizationName.trim();
-      final lowerThirdText = (lowerThirdOn && orgName.isNotEmpty) ? orgName : null;
-
-      final outputPath =
-          '${exportsDir.path}/${_sanitizeFileName(clip.title)}_${DateTime.now().millisecondsSinceEpoch}.mp4';
-
-      await _ffmpegService.exportClip(
-        sourcePath: currentProject.workingPath,
-        start: clip.start,
-        end: clip.end,
-        outputPath: outputPath,
-        subtitlesPath: subtitlesPath,
-        forceStyle: subtitlesPath == null ? null : captionStyle.assForceStyle,
-        logoPath: logoPath,
-        lowerThirdText: lowerThirdText,
-      );
-
-      lastExportPath = outputPath;
-      exportStatus = ExportStatus.completed;
-      currentProject.hasExported = true;
+      final outputPath = await _renderClip(clip);
+      exportJobs[clip.id] = ExportJob(status: ExportJobStatus.done, outputPath: outputPath, progress: 1);
+      project?.hasExported = true;
     } catch (e) {
-      exportError = e.toString();
-      exportStatus = ExportStatus.failed;
-    } finally {
-      _notifyAndSave();
+      exportJobs[clip.id] = ExportJob(status: ExportJobStatus.failed, error: e.toString());
     }
+    _notifyAndSave();
+  }
+
+  /// Renders [clip] as a 1080×1920 MP4 — trimmed to its time range, with
+  /// matching transcript lines burned in as captions (styled per
+  /// [captionStyle]) and branding applied per the enabled presets — saved
+  /// under the app's documents directory with a meaningful filename.
+  /// Shared by [exportBatch] and [retryClipExport].
+  Future<String> _renderClip(AiClip clip) async {
+    final currentProject = project!;
+    final exportsDir = Directory('${(await _documentsDirProvider()).path}/exports');
+    if (!exportsDir.existsSync()) exportsDir.createSync(recursive: true);
+
+    String? subtitlesPath;
+    final clipLines = transcript
+        .where((s) => !s.isSilence && s.text.trim().isNotEmpty && s.end > clip.start && s.start < clip.end)
+        .toList();
+    if (clipLines.isNotEmpty) {
+      subtitlesPath = '${exportsDir.path}/${clip.id}.srt';
+      File(subtitlesPath).writeAsStringSync(_buildSrt(clipLines, clip.start));
+    }
+
+    final watermarkOn = _brandingEnabled('watermark');
+    final lowerThirdOn = _brandingEnabled('lower_third');
+    final logoPath = watermarkOn ? brandSettings.logoPath : null;
+    final orgName = brandSettings.organizationName.trim();
+    final lowerThirdText = (lowerThirdOn && orgName.isNotEmpty) ? orgName : null;
+
+    final outputPath =
+        '${exportsDir.path}/${_sanitizeFileName(clip.title)}_${DateTime.now().millisecondsSinceEpoch}.mp4';
+
+    await _ffmpegService.exportClip(
+      sourcePath: currentProject.workingPath,
+      start: clip.start,
+      end: clip.end,
+      outputPath: outputPath,
+      subtitlesPath: subtitlesPath,
+      forceStyle: subtitlesPath == null ? null : captionStyle.assForceStyle,
+      logoPath: logoPath,
+      lowerThirdText: lowerThirdText,
+    );
+
+    return outputPath;
   }
 
   bool _brandingEnabled(String presetId) {
@@ -509,14 +488,9 @@ class AppState extends ChangeNotifier {
     brandingPresets
       ..clear()
       ..addAll(snapshot.brandingPresets);
-    selectedCaptionIndex = snapshot.selectedCaptionIndex;
-    generatedCaptions = snapshot.generatedCaptions;
     socialCopy = snapshot.socialCopy;
     captionStyle = snapshot.captionStyle;
     exportJobs = snapshot.exportJobs;
-    selectedDestinations
-      ..clear()
-      ..addAll(snapshot.selectedDestinations);
   }
 
   /// Every saved project, most recently updated first — backs the Home
@@ -556,9 +530,6 @@ class AppState extends ChangeNotifier {
       silenceRanges: silenceRanges,
       selectedClipId: selectedClip?.id,
       brandingPresets: brandingPresets,
-      selectedCaptionIndex: selectedCaptionIndex,
-      generatedCaptions: generatedCaptions,
-      selectedDestinations: selectedDestinations,
       captionStyle: captionStyle,
       socialCopy: socialCopy,
       exportJobs: exportJobs,

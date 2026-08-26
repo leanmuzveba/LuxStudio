@@ -5,7 +5,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/ai_clip.dart';
 import '../models/caption_style.dart';
-import '../models/export_destination.dart';
+import '../models/export_destination.dart' show BrandingPreset;
 import '../models/export_job.dart';
 import '../models/silence_range.dart';
 import '../models/social_copy.dart';
@@ -21,9 +21,6 @@ class ProjectSnapshot {
   final List<SilenceRange> silenceRanges;
   final String? selectedClipId;
   final List<BrandingPreset> brandingPresets;
-  final int selectedCaptionIndex;
-  final List<String> generatedCaptions;
-  final Set<ExportPlatform> selectedDestinations;
   final CaptionStyle captionStyle;
   final SocialCopy? socialCopy;
   final Map<String, ExportJob> exportJobs;
@@ -35,9 +32,6 @@ class ProjectSnapshot {
     required this.silenceRanges,
     required this.selectedClipId,
     required this.brandingPresets,
-    required this.selectedCaptionIndex,
-    required this.generatedCaptions,
-    required this.selectedDestinations,
     this.captionStyle = CaptionStyle.defaultStyle,
     this.socialCopy,
     this.exportJobs = const {},
@@ -50,9 +44,6 @@ class ProjectSnapshot {
         'silenceRanges': silenceRanges.map((r) => r.toJson()).toList(),
         'selectedClipId': selectedClipId,
         'brandingPresets': brandingPresets.map((b) => b.toJson()).toList(),
-        'selectedCaptionIndex': selectedCaptionIndex,
-        'generatedCaptions': generatedCaptions,
-        'selectedDestinations': selectedDestinations.map((d) => d.name).toList(),
         'captionStyle': captionStyle.toJson(),
         'socialCopy': socialCopy?.toJson(),
         'exportJobs': exportJobs.map((id, job) => MapEntry(id, job.toJson())),
@@ -73,11 +64,6 @@ class ProjectSnapshot {
         brandingPresets: (json['brandingPresets'] as List)
             .map((e) => BrandingPreset.fromJson(e as Map<String, dynamic>))
             .toList(),
-        selectedCaptionIndex: json['selectedCaptionIndex'] as int,
-        generatedCaptions: (json['generatedCaptions'] as List).cast<String>(),
-        selectedDestinations: (json['selectedDestinations'] as List)
-            .map((name) => ExportPlatform.values.byName(name as String))
-            .toSet(),
         captionStyle: json['captionStyle'] == null
             ? CaptionStyle.defaultStyle
             : CaptionStyle.fromJson(json['captionStyle'] as Map<String, dynamic>),
