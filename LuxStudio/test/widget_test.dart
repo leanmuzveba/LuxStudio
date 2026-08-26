@@ -102,7 +102,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Editor'), findsOneWidget);
+    expect(find.text('Remove Silence'), findsOneWidget);
   });
 
   testWidgets('MaterialApp uses the dark LuxStudio theme', (tester) async {

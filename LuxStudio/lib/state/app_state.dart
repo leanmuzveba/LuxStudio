@@ -74,9 +74,6 @@ class AppState extends ChangeNotifier {
   String? exportError;
   String? lastExportPath;
 
-  /// Currently active bottom tool on the editor screen.
-  EditorTool activeTool = EditorTool.captions;
-
   /// The clip the user chose to edit & export.
   AiClip? selectedClip;
 
@@ -134,11 +131,6 @@ class AppState extends ChangeNotifier {
     _notifyAndSave();
   }
 
-  void setActiveTool(EditorTool tool) {
-    activeTool = tool;
-    notifyListeners();
-  }
-
   void updateTranscriptText(String segmentId, String newText) {
     final segment = transcript.firstWhere((s) => s.id == segmentId);
     segment.text = newText;
@@ -191,14 +183,23 @@ class AppState extends ChangeNotifier {
   /// Runs silence detection against the project's original sandboxed copy
   /// (not the current working file — always the same source timeline, so
   /// re-detecting after edits doesn't compound against a previous trim).
-  Future<void> detectSilence() async {
+  /// [noiseFloorDb]/[minDuration] mirror [FfmpegService.detectSilence]'s
+  /// defaults so callers that don't care can omit them.
+  Future<void> detectSilence({
+    double noiseFloorDb = -30,
+    Duration minDuration = const Duration(milliseconds: 500),
+  }) async {
     final currentProject = project;
     if (currentProject == null) return;
     isDetectingSilence = true;
     silenceError = null;
     notifyListeners();
     try {
-      silenceRanges = await _ffmpegService.detectSilence(currentProject.sourcePath);
+      silenceRanges = await _ffmpegService.detectSilence(
+        currentProject.sourcePath,
+        noiseFloorDb: noiseFloorDb,
+        minDuration: minDuration,
+      );
     } catch (e) {
       silenceError = e.toString();
     } finally {
@@ -210,6 +211,18 @@ class AppState extends ChangeNotifier {
   void toggleSilenceRangeAccepted(int index) {
     if (index < 0 || index >= silenceRanges.length) return;
     silenceRanges[index].accepted = !silenceRanges[index].accepted;
+    _notifyAndSave();
+  }
+
+  void setAllSilenceRangesAccepted(bool accepted) {
+    for (final range in silenceRanges) {
+      range.accepted = accepted;
+    }
+    _notifyAndSave();
+  }
+
+  void updateCaptionStyle(CaptionStyle style) {
+    captionStyle = style;
     _notifyAndSave();
   }
 
@@ -544,7 +557,4 @@ class AppState extends ChangeNotifier {
       exportJobs: exportJobs,
     ));
   }
-
 }
-
-enum EditorTool { captions, audio, aiCuts, overlays }
