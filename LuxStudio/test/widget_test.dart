@@ -82,26 +82,27 @@ void main() {
     await tester.tap(find.text('New Project'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Import your sermon'), findsOneWidget);
-    expect(find.text('Choose video from device'), findsOneWidget);
+    expect(find.text('Import Video'), findsOneWidget);
+    expect(find.text('Device'), findsOneWidget);
   });
 
-  testWidgets('Starting an import shows the processing pipeline', (tester) async {
+  testWidgets('Picking a video from Import goes straight to the editor', (tester) async {
     await pumpApp(tester, buildTestAppState());
 
     await tester.tap(find.text('New Project'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Choose video from device'));
+    await tester.tap(find.text('Device'));
     // The (fake) import does its own async work (copy + probe) before
-    // AppState.startImport is called and the pipeline UI appears.
+    // AppState.startImport is called and the screen navigates. Bounded
+    // pumps rather than pumpAndSettle: the editor's video preview shows
+    // an indeterminate spinner while its (real, unmockable under
+    // `flutter test`) VideoPlayerController never finishes initializing,
+    // which pumpAndSettle would wait on forever.
     await tester.pump();
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Processing your video'), findsOneWidget);
-    // "Removing silence" legitimately appears twice: once as the active-step
-    // heading, once as the first row in the step checklist below it.
-    expect(find.text('Removing silence'), findsNWidgets(2));
+    expect(find.text('Editor'), findsOneWidget);
   });
 
   testWidgets('MaterialApp uses the dark LuxStudio theme', (tester) async {

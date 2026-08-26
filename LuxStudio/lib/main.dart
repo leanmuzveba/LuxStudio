@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'screens/ai_clips_screen.dart';
 import 'screens/export_share_screen.dart';
-import 'screens/import_processing_screen.dart';
+import 'screens/import_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/video_editor_screen.dart';
 import 'services/media_import_service.dart';
@@ -64,7 +64,7 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
         theme: AppTheme.dark,
         home: !_checkedRecovery ? const _SplashScreen() : const BottomNavScaffold(),
         routes: {
-          AppRoutes.import: (_) => ImportProcessingScreen(mediaImportService: mediaImportService),
+          AppRoutes.import: (_) => ImportScreen(mediaImportService: mediaImportService),
           AppRoutes.editor: (_) => const VideoEditorScreen(),
           AppRoutes.clips: (_) => const AiClipsScreen(),
           AppRoutes.export: (_) => const ExportShareScreen(),

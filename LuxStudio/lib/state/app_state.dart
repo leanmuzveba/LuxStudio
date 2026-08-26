@@ -9,7 +9,6 @@ import '../models/brand_settings.dart';
 import '../models/caption_style.dart';
 import '../models/export_destination.dart';
 import '../models/export_job.dart';
-import '../models/processing_step.dart';
 import '../models/silence_range.dart';
 import '../models/social_copy.dart';
 import '../models/transcript_segment.dart';
@@ -53,10 +52,6 @@ class AppState extends ChangeNotifier {
   /// applied across exports when enabled. Refresh with
   /// [reloadBrandSettings] after the user edits it there.
   BrandSettings brandSettings = BrandSettings.empty;
-
-  /// Which pipeline stage the import screen is currently animating.
-  int processingStageIndex = 0;
-  bool processingComplete = false;
 
   final List<TranscriptSegment> transcript = [];
   final List<AiClip> suggestedClips = [];
@@ -136,17 +131,6 @@ class AppState extends ChangeNotifier {
 
   void startImport(VideoProject newProject) {
     project = newProject;
-    processingStageIndex = 0;
-    processingComplete = false;
-    _notifyAndSave();
-  }
-
-  void advanceProcessingStage() {
-    if (processingStageIndex < ProcessingStep.pipeline.length - 1) {
-      processingStageIndex++;
-    } else {
-      processingComplete = true;
-    }
     _notifyAndSave();
   }
 
@@ -513,8 +497,6 @@ class AppState extends ChangeNotifier {
     selectedDestinations
       ..clear()
       ..addAll(snapshot.selectedDestinations);
-    processingStageIndex = snapshot.processingStageIndex;
-    processingComplete = snapshot.processingComplete;
   }
 
   /// Every saved project, most recently updated first — backs the Home
@@ -557,8 +539,6 @@ class AppState extends ChangeNotifier {
       selectedCaptionIndex: selectedCaptionIndex,
       generatedCaptions: generatedCaptions,
       selectedDestinations: selectedDestinations,
-      processingStageIndex: processingStageIndex,
-      processingComplete: processingComplete,
       captionStyle: captionStyle,
       socialCopy: socialCopy,
       exportJobs: exportJobs,

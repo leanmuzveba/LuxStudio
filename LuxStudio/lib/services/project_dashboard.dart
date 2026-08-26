@@ -37,3 +37,15 @@ String formatProjectDuration(Duration d) {
   }
   return '$m:$s';
 }
+
+/// Formats a byte count as `"640 MB"` / `"2.1 GB"` for the Import screen's
+/// recent-files list.
+String formatFileSize(int bytes) {
+  const kb = 1024;
+  const mb = kb * 1024;
+  const gb = mb * 1024;
+  if (bytes >= gb) return '${(bytes / gb).toStringAsFixed(1)} GB';
+  if (bytes >= mb) return '${(bytes / mb).round()} MB';
+  if (bytes >= kb) return '${(bytes / kb).round()} KB';
+  return '$bytes B';
+}

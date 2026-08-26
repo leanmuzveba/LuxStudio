@@ -24,8 +24,6 @@ class ProjectSnapshot {
   final int selectedCaptionIndex;
   final List<String> generatedCaptions;
   final Set<ExportPlatform> selectedDestinations;
-  final int processingStageIndex;
-  final bool processingComplete;
   final CaptionStyle captionStyle;
   final SocialCopy? socialCopy;
   final Map<String, ExportJob> exportJobs;
@@ -40,8 +38,6 @@ class ProjectSnapshot {
     required this.selectedCaptionIndex,
     required this.generatedCaptions,
     required this.selectedDestinations,
-    required this.processingStageIndex,
-    required this.processingComplete,
     this.captionStyle = CaptionStyle.defaultStyle,
     this.socialCopy,
     this.exportJobs = const {},
@@ -57,8 +53,6 @@ class ProjectSnapshot {
         'selectedCaptionIndex': selectedCaptionIndex,
         'generatedCaptions': generatedCaptions,
         'selectedDestinations': selectedDestinations.map((d) => d.name).toList(),
-        'processingStageIndex': processingStageIndex,
-        'processingComplete': processingComplete,
         'captionStyle': captionStyle.toJson(),
         'socialCopy': socialCopy?.toJson(),
         'exportJobs': exportJobs.map((id, job) => MapEntry(id, job.toJson())),
@@ -84,8 +78,6 @@ class ProjectSnapshot {
         selectedDestinations: (json['selectedDestinations'] as List)
             .map((name) => ExportPlatform.values.byName(name as String))
             .toSet(),
-        processingStageIndex: json['processingStageIndex'] as int,
-        processingComplete: json['processingComplete'] as bool,
         captionStyle: json['captionStyle'] == null
             ? CaptionStyle.defaultStyle
             : CaptionStyle.fromJson(json['captionStyle'] as Map<String, dynamic>),

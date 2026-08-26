@@ -53,6 +53,10 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
     controller.addListener(_onControllerUpdate);
     controller.initialize().then((_) {
       if (mounted) setState(() {});
+    }).catchError((Object _) {
+      // Preview stays in its not-yet-initialized state (spinner) rather
+      // than crashing the editor on an unsupported/corrupt file.
+      if (mounted) setState(() {});
     });
   }
 

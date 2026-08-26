@@ -38,8 +38,6 @@ ProjectSnapshot _snapshot({bool hasExported = false, bool hasClips = false}) {
     selectedCaptionIndex: 0,
     generatedCaptions: const [],
     selectedDestinations: const {},
-    processingStageIndex: 0,
-    processingComplete: true,
   );
 }
 
