@@ -24,6 +24,7 @@ dependencies:
   google_generative_ai: ^0.4.7
   uuid: ^4.6.0
   image_picker: ^1.2.3
+  google_fonts: ^8.2.1
 
 dev_dependencies:
   flutter_test:
