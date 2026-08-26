@@ -34,6 +34,19 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
   VideoPlayerController? _controller;
   String? _controllerPath;
   Duration _position = Duration.zero;
+  String? _seekedForClipId;
+
+  /// Jumps playback to [start] the first time [clipId] is selected (e.g.
+  /// via "Edit Clip" on the AI Clips screen) — doesn't fight the user by
+  /// re-seeking on every rebuild once they've moved the playhead.
+  void _seekToSelectedClipOnce(String? clipId, Duration? start) {
+    if (clipId == null || start == null) return;
+    if (_seekedForClipId == clipId) return;
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+    _seekedForClipId = clipId;
+    _seekTo(start);
+  }
 
   @override
   void dispose() {
@@ -117,6 +130,7 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
               );
             }
             _ensureController(project.workingPath);
+            _seekToSelectedClipOnce(appState.selectedClip?.id, appState.selectedClip?.start);
             final currentSegment = _currentSegment(appState.transcript);
 
             return Column(

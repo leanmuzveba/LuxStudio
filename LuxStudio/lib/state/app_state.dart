@@ -214,6 +214,13 @@ class AppState extends ChangeNotifier {
     _notifyAndSave();
   }
 
+  void toggleClipIncludeInExport(String clipId) {
+    final clip = _findClip(clipId);
+    if (clip == null) return;
+    clip.includeInExport = !clip.includeInExport;
+    _notifyAndSave();
+  }
+
   void setAllSilenceRangesAccepted(bool accepted) {
     for (final range in silenceRanges) {
       range.accepted = accepted;
