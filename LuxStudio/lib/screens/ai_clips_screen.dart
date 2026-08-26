@@ -109,7 +109,7 @@ class AiClipsScreen extends StatelessWidget {
                         : () {
                             final first = clips.firstWhere((c) => c.includeInExport);
                             appState.chooseClip(first);
-                            Navigator.of(context).pushNamed(AppRoutes.export);
+                            Navigator.of(context).pushNamed(AppRoutes.social);
                           },
                   ),
                 ),

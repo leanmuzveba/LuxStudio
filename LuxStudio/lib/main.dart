@@ -7,6 +7,7 @@ import 'screens/export_share_screen.dart';
 import 'screens/import_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/silence_screen.dart';
+import 'screens/social_screen.dart';
 import 'screens/video_editor_screen.dart';
 import 'services/media_import_service.dart';
 import 'state/app_state.dart';
@@ -72,6 +73,7 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
           AppRoutes.silence: (_) => const SilenceScreen(),
           AppRoutes.captions: (_) => const CaptionsScreen(),
           AppRoutes.clips: (_) => const AiClipsScreen(),
+          AppRoutes.social: (_) => const SocialScreen(),
           AppRoutes.branding: (_) => const BrandingScreen(),
           AppRoutes.export: (_) => const ExportShareScreen(),
           AppRoutes.settings: (_) => const SettingsScreen(),
@@ -104,6 +106,7 @@ class AppRoutes {
   static const silence = '/silence';
   static const captions = '/captions';
   static const clips = '/clips';
+  static const social = '/social';
   static const branding = '/branding';
   static const export = '/export';
   static const settings = '/settings';
