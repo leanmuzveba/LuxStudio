@@ -476,7 +476,21 @@ class AppState extends ChangeNotifier {
   Future<void> tryRecoverLastProject() async {
     final snapshot = await _projectStore.loadLast();
     if (snapshot == null) return;
+    _applySnapshot(snapshot);
+    notifyListeners();
+  }
 
+  /// Switches the active project to [snapshot] — used when the user taps
+  /// a card on the Home dashboard's recent-projects list. Same shape as
+  /// [tryRecoverLastProject], but explicitly chosen rather than the last
+  /// one open, and persists immediately so it becomes the new "last open"
+  /// project for the next app launch.
+  void openProject(ProjectSnapshot snapshot) {
+    _applySnapshot(snapshot);
+    _notifyAndSave();
+  }
+
+  void _applySnapshot(ProjectSnapshot snapshot) {
     project = snapshot.project;
     transcript
       ..clear()
@@ -501,6 +515,19 @@ class AppState extends ChangeNotifier {
       ..addAll(snapshot.selectedDestinations);
     processingStageIndex = snapshot.processingStageIndex;
     processingComplete = snapshot.processingComplete;
+  }
+
+  /// Every saved project, most recently updated first — backs the Home
+  /// dashboard's recent-projects list. Call again (e.g. after returning
+  /// from Import or the editor) to pick up changes.
+  List<ProjectSnapshot> recentProjects = [];
+  bool isLoadingRecentProjects = false;
+
+  Future<void> loadRecentProjects() async {
+    isLoadingRecentProjects = true;
+    notifyListeners();
+    recentProjects = await _projectStore.listAll();
+    isLoadingRecentProjects = false;
     notifyListeners();
   }
 

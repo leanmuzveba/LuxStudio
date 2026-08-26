@@ -68,8 +68,19 @@ Future<void> pumpApp(
 }
 
 void main() {
-  testWidgets('App boots to the import screen', (tester) async {
+  testWidgets('App boots to the Home dashboard', (tester) async {
     await pumpApp(tester, buildTestAppState());
+
+    expect(find.text('LuxStudio'), findsOneWidget);
+    expect(find.text('New Project'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
+  });
+
+  testWidgets('New Project opens the import screen', (tester) async {
+    await pumpApp(tester, buildTestAppState());
+
+    await tester.tap(find.text('New Project'));
+    await tester.pumpAndSettle();
 
     expect(find.text('Import your sermon'), findsOneWidget);
     expect(find.text('Choose video from device'), findsOneWidget);
@@ -77,6 +88,9 @@ void main() {
 
   testWidgets('Starting an import shows the processing pipeline', (tester) async {
     await pumpApp(tester, buildTestAppState());
+
+    await tester.tap(find.text('New Project'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Choose video from device'));
     // The (fake) import does its own async work (copy + probe) before

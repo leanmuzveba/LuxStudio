@@ -8,6 +8,7 @@ import 'screens/video_editor_screen.dart';
 import 'services/media_import_service.dart';
 import 'state/app_state.dart';
 import 'theme/app_theme.dart';
+import 'widgets/bottom_nav_scaffold.dart';
 
 void main() {
   runApp(const LuxStudioApp());
@@ -61,15 +62,9 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
         title: 'LuxStudio',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
-        home: !_checkedRecovery
-            ? const _SplashScreen()
-            : (appState.project != null && appState.processingComplete)
-                ? const VideoEditorScreen()
-                : ImportProcessingScreen(mediaImportService: mediaImportService),
+        home: !_checkedRecovery ? const _SplashScreen() : const BottomNavScaffold(),
         routes: {
-          // AppRoutes.import ('/') is handled via `home` above, not here —
-          // MaterialApp forbids routes containing the default route name
-          // when `home` is also set. Nothing navigates back to it by name.
+          AppRoutes.import: (_) => ImportProcessingScreen(mediaImportService: mediaImportService),
           AppRoutes.editor: (_) => const VideoEditorScreen(),
           AppRoutes.clips: (_) => const AiClipsScreen(),
           AppRoutes.export: (_) => const ExportShareScreen(),
@@ -93,10 +88,12 @@ class _SplashScreen extends StatelessWidget {
   }
 }
 
-/// Route names for the four-screen LuxStudio flow.
+/// Route names for the pushed (non-tab) screens. Home/Branding/Settings
+/// tabs live inside [BottomNavScaffold], set as `home` above — Settings
+/// is also reachable as a named push (e.g. from Import's gear icon).
 class AppRoutes {
   AppRoutes._();
-  static const import = '/';
+  static const import = '/import';
   static const editor = '/editor';
   static const clips = '/clips';
   static const export = '/export';

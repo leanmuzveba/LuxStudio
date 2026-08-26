@@ -1,23 +1,15 @@
-import 'dart:async';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
-import '../models/brand_settings.dart';
-import '../services/brand_settings_store.dart';
 import '../services/secure_settings.dart';
 import '../theme/app_theme.dart';
 import '../widgets/gradient_button.dart';
 
-/// Settings — the user's own Gemini API key, and reusable branding
-/// (logo + organisation name) applied across exports.
+/// Settings — the user's own Gemini API key.
 ///
 /// The API key is stored via [SecureSettings] (Android Keystore-backed
 /// secure storage), entered at runtime — never hardcoded, never in source
-/// control, never compiled into the APK. Branding is stored via
-/// [BrandSettingsStore] (a plain JSON file — a logo path and org name
-/// aren't secrets).
+/// control, never compiled into the APK. Branding (logo + org name) moved
+/// to its own [BrandingScreen], reached via the bottom nav.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -27,15 +19,11 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _secureSettings = SecureSettings();
-  final _brandSettingsStore = BrandSettingsStore();
   final _controller = TextEditingController();
-  final _orgNameController = TextEditingController();
   bool _obscure = true;
   bool _loading = true;
   bool _saving = false;
   bool _hasSavedKey = false;
-  BrandSettings _brandSettings = BrandSettings.empty;
-  bool _pickingLogo = false;
 
   @override
   void initState() {
@@ -46,47 +34,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _controller.dispose();
-    _orgNameController.dispose();
     super.dispose();
   }
 
   Future<void> _loadSettings() async {
     final key = await _secureSettings.getGeminiApiKey();
-    final brand = await _brandSettingsStore.load();
     if (!mounted) return;
     setState(() {
       _controller.text = key ?? '';
       _hasSavedKey = key != null && key.isNotEmpty;
-      _brandSettings = brand;
-      _orgNameController.text = brand.organizationName;
       _loading = false;
     });
-  }
-
-  Future<void> _pickLogo() async {
-    setState(() => _pickingLogo = true);
-    try {
-      final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-      if (picked == null) return;
-      final updated = await _brandSettingsStore.updateLogo(_brandSettings, picked.path);
-      if (!mounted) return;
-      setState(() => _brandSettings = updated);
-    } finally {
-      if (mounted) setState(() => _pickingLogo = false);
-    }
-  }
-
-  Future<void> _removeLogo() async {
-    final updated = BrandSettings(organizationName: _brandSettings.organizationName);
-    await _brandSettingsStore.save(updated);
-    if (!mounted) return;
-    setState(() => _brandSettings = updated);
-  }
-
-  void _onOrgNameChanged(String value) {
-    final updated = BrandSettings(logoPath: _brandSettings.logoPath, organizationName: value);
-    _brandSettings = updated;
-    unawaited(_brandSettingsStore.save(updated));
   }
 
   Future<void> _save() async {
@@ -202,82 +160,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: Gaps.xl),
-                const Divider(color: AppColors.border),
-                const SizedBox(height: Gaps.xl),
-                Text('Branding', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: Gaps.xs),
-                const Text(
-                  'A logo and organisation name applied to exports when '
-                  'branding is enabled.',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
-                ),
-                const SizedBox(height: Gaps.md),
-                Row(
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: _brandSettings.logoPath == null
-                          ? const Icon(Icons.image_outlined, color: AppColors.textMuted)
-                          : Image.file(File(_brandSettings.logoPath!), fit: BoxFit.cover),
-                    ),
-                    const SizedBox(width: Gaps.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          TextButton(
-                            onPressed: _pickingLogo ? null : _pickLogo,
-                            child: Text(
-                              _pickingLogo
-                                  ? 'Opening picker…'
-                                  : _brandSettings.logoPath == null
-                                      ? 'Choose logo'
-                                      : 'Change logo',
-                            ),
-                          ),
-                          if (_brandSettings.logoPath != null)
-                            TextButton(
-                              onPressed: _removeLogo,
-                              child: const Text('Remove logo'),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: Gaps.md),
-                TextField(
-                  controller: _orgNameController,
-                  onChanged: _onOrgNameChanged,
-                  style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    hintText: 'Organisation name',
-                    hintStyle: const TextStyle(color: AppColors.textMuted),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.accent),
-                    ),
-                  ),
                 ),
               ],
             ),
