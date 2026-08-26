@@ -5,13 +5,12 @@ import 'screens/branding_screen.dart';
 import 'screens/captions_screen.dart';
 import 'screens/export_share_screen.dart';
 import 'screens/import_screen.dart';
-import 'screens/settings_screen.dart';
 import 'screens/silence_screen.dart';
 import 'screens/social_screen.dart';
 import 'screens/video_editor_screen.dart';
 import 'services/media_import_service.dart';
 import 'state/app_state.dart';
-import 'theme/app_theme.dart';
+import 'theme/lux_theme.dart';
 import 'widgets/bottom_nav_scaffold.dart';
 
 void main() {
@@ -65,7 +64,7 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
       child: MaterialApp(
         title: 'LuxStudio',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.dark,
+        theme: LuxTheme.dark,
         home: !_checkedRecovery ? const _SplashScreen() : const BottomNavScaffold(),
         routes: {
           AppRoutes.import: (_) => ImportScreen(mediaImportService: mediaImportService),
@@ -76,7 +75,6 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
           AppRoutes.social: (_) => const SocialScreen(),
           AppRoutes.branding: (_) => const BrandingScreen(),
           AppRoutes.export: (_) => const ExportShareScreen(),
-          AppRoutes.settings: (_) => const SettingsScreen(),
         },
       ),
     );
@@ -97,8 +95,7 @@ class _SplashScreen extends StatelessWidget {
 }
 
 /// Route names for the pushed (non-tab) screens. Home/Branding/Settings
-/// tabs live inside [BottomNavScaffold], set as `home` above — Settings
-/// is also reachable as a named push (e.g. from Import's gear icon).
+/// tabs live inside [BottomNavScaffold], set as `home` above.
 class AppRoutes {
   AppRoutes._();
   static const import = '/import';
@@ -109,7 +106,6 @@ class AppRoutes {
   static const social = '/social';
   static const branding = '/branding';
   static const export = '/export';
-  static const settings = '/settings';
 }
 
 /// Makes the single [AppState] instance available to the whole widget

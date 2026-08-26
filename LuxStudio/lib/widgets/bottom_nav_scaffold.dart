@@ -7,10 +7,6 @@ import 'lux_bottom_nav.dart';
 
 /// The app's root shell once past import/recovery: Home / Branding /
 /// Settings as persistent bottom-nav tabs, matching the mockup's nav bar.
-///
-/// Branding and Settings are still on the pre-redesign theme for now
-/// (restyled in a later phase) — only the nav chrome itself and Home are
-/// fully on the new Lux design system at this point.
 class BottomNavScaffold extends StatefulWidget {
   const BottomNavScaffold({super.key});
 

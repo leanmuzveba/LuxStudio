@@ -1,9 +1,9 @@
 name: luxstudio
 description: >
-  LuxStudio — an AI-assisted sermon-to-social video editor. Upload a raw
-  sermon recording, let on-device/cloud AI strip silence, clean up audio,
-  auto-caption, and surface viral-ready vertical clips, then export straight
-  to Reels, TikTok, Shorts, or Stories.
+  LuxStudio — an AI-assisted long-form-to-social video editor. Import a raw
+  recording, let AI strip silence, auto-caption, and surface short-form
+  clip candidates, then batch-export ready-to-share vertical MP4s with
+  branding and social copy.
 publish_to: 'none'
 version: 1.0.0+1
 

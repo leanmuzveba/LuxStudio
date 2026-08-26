@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Design tokens for the redesigned LuxStudio UI (gold/dark "premium studio"
-/// look), extracted from the "LuxStudio App Mockups" design artifact.
-///
-/// Coexists with the original [AppColors]/[AppTheme] (see app_theme.dart)
-/// while screens migrate one at a time — the old file is only deleted once
-/// nothing references it anymore.
+/// Design tokens for the LuxStudio UI (gold/dark "premium studio" look),
+/// extracted from the "LuxStudio App Mockups" design artifact.
 class LuxColors {
   LuxColors._();
 

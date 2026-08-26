@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../services/secure_settings.dart';
-import '../theme/app_theme.dart';
-import '../widgets/gradient_button.dart';
+import '../theme/lux_theme.dart';
+import '../widgets/lux_app_bar.dart';
+import '../widgets/lux_buttons.dart';
 
 /// Settings — the user's own Gemini API key.
 ///
@@ -80,83 +81,85 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      backgroundColor: LuxColors.background,
+      appBar: const LuxAppBar(title: 'Settings', showBack: false),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: LuxColors.gold))
           : ListView(
-              padding: const EdgeInsets.all(Gaps.md),
+              padding: const EdgeInsets.all(20),
               children: [
-                Text('Gemini API key', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: Gaps.xs),
+                Text('Gemini API key', style: LuxText.sora(size: 15, weight: FontWeight.w700)),
+                const SizedBox(height: 6),
                 Text(
                   'LuxStudio uses your own free-tier Gemini API key for transcription, '
                   'AI clip suggestions, and social copy. Get one at '
                   "aistudio.google.com/apikey — it's stored only on this device and "
                   "only ever sent to Google's API.",
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: LuxText.manrope(size: 13, color: LuxColors.textSecondary, height: 1.5),
                 ),
-                const SizedBox(height: Gaps.md),
+                const SizedBox(height: 16),
                 TextField(
                   controller: _controller,
                   obscureText: _obscure,
-                  style: const TextStyle(color: AppColors.textPrimary),
+                  style: LuxText.manrope(size: 14, color: LuxColors.textPrimary),
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: AppColors.surface,
+                    fillColor: LuxColors.surface,
                     hintText: 'Paste your Gemini API key',
-                    hintStyle: const TextStyle(color: AppColors.textMuted),
+                    hintStyle: LuxText.manrope(size: 14, color: LuxColors.textMuted),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border),
+                      borderSide: const BorderSide(color: LuxColors.border),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border),
+                      borderSide: const BorderSide(color: LuxColors.border),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.accent),
+                      borderSide: const BorderSide(color: LuxColors.gold),
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                        color: AppColors.textMuted,
+                        color: LuxColors.textMuted,
                       ),
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
                 ),
-                const SizedBox(height: Gaps.md),
-                GradientButton(
+                const SizedBox(height: 16),
+                LuxPrimaryButton(
                   label: _saving ? 'Saving…' : 'Save key',
                   icon: Icons.check_rounded,
+                  loading: _saving,
                   onPressed: _saving ? null : _save,
                 ),
                 if (_hasSavedKey) ...[
-                  const SizedBox(height: Gaps.sm),
+                  const SizedBox(height: 8),
                   Center(
                     child: TextButton(
                       onPressed: _clear,
-                      child: const Text('Remove saved key'),
+                      child: Text('Remove saved key', style: LuxText.manrope(size: 13, weight: FontWeight.w700, color: LuxColors.tan)),
                     ),
                   ),
                 ],
-                const SizedBox(height: Gaps.lg),
+                const SizedBox(height: 20),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
                       _hasSavedKey ? Icons.check_circle_rounded : Icons.info_outline_rounded,
                       size: 16,
-                      color: _hasSavedKey ? AppColors.success : AppColors.warning,
+                      color: _hasSavedKey ? LuxColors.success : LuxColors.amber,
                     ),
-                    const SizedBox(width: Gaps.sm),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _hasSavedKey
                             ? 'A key is saved on this device.'
                             : "No key saved yet — AI features won't work until you add one.",
-                        style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+                        style: LuxText.manrope(size: 12.5, color: LuxColors.textMuted),
                       ),
                     ),
                   ],
