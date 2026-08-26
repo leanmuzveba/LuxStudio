@@ -5,6 +5,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/ai_clip.dart';
+import '../models/social_copy.dart';
 import '../models/transcript_segment.dart';
 import 'secure_settings.dart';
 
@@ -36,8 +37,9 @@ TranscriptSegment transcriptSegmentFromJson(Map<String, dynamic> map, int index)
   );
 }
 
-/// Maps one `{title, startSeconds, endSeconds, viralScore, reason}` entry
-/// from [GeminiService.suggestClips]'s response into an [AiClip].
+/// Maps one `{title, startSeconds, endSeconds, viralScore, reason,
+/// category}` entry from [GeminiService.suggestClips]'s response into an
+/// [AiClip].
 AiClip aiClipFromJson(Map<String, dynamic> map, String id) {
   return AiClip(
     id: id,
@@ -46,6 +48,21 @@ AiClip aiClipFromJson(Map<String, dynamic> map, String id) {
     end: Duration(seconds: (map['endSeconds'] as num).round()),
     viralScore: (map['viralScore'] as num).round().clamp(0, 100),
     reason: (map['reason'] as String).trim(),
+    category: ((map['category'] as String?) ?? '').trim(),
+  );
+}
+
+/// Maps a `{title, summary, description, hashtags}` object from
+/// [GeminiService.generateSocialCopy]'s response into a [SocialCopy].
+SocialCopy socialCopyFromJson(Map<String, dynamic> map) {
+  return SocialCopy(
+    title: ((map['title'] as String?) ?? '').trim(),
+    summary: ((map['summary'] as String?) ?? '').trim(),
+    description: ((map['description'] as String?) ?? '').trim(),
+    hashtags: ((map['hashtags'] as List?) ?? const [])
+        .map((e) => e.toString().trim().replaceFirst(RegExp(r'^#'), ''))
+        .where((tag) => tag.isNotEmpty)
+        .toList(),
   );
 }
 
@@ -128,10 +145,12 @@ line's bracket to end of a line's bracket).
 
 Return ONLY a JSON array (no markdown, no commentary) where each element
 is exactly:
-{"title": string, "startSeconds": number, "endSeconds": number, "viralScore": integer 0-100, "reason": string}
+{"title": string, "startSeconds": number, "endSeconds": number, "viralScore": integer 0-100, "reason": string, "category": string}
 
 "reason" is one short sentence on why this moment works as a standalone
-clip. Order the array by viralScore, highest first.
+clip. "category" is a short 2-3 word tag naming the type of moment, e.g.
+"Strong Hook", "Complete Idea", "Memorable Quote", or "Hot Take". Order
+the array by viralScore, highest first.
 ''';
 
     final response = await model.generateContent([Content.text(prompt)]);
@@ -142,10 +161,11 @@ clip. Order the array by viralScore, highest first.
         .toList();
   }
 
-  /// Writes ready-to-post social captions (hook + short description +
-  /// hashtags, each one self-contained) for [clip], grounded in the
-  /// portion of [transcript] the clip actually covers.
-  Future<List<String>> generateSocialCaptions({
+  /// Writes ready-to-post social copy — a title, a one-line summary, a
+  /// longer description, and hashtags, each independently usable — for
+  /// [clip], grounded in the portion of [transcript] the clip actually
+  /// covers.
+  Future<SocialCopy> generateSocialCopy({
     required List<TranscriptSegment> transcript,
     required AiClip clip,
   }) async {
@@ -161,17 +181,33 @@ This is the transcript of a short clip titled "${clip.title}":
 
 $clipText
 
-Write 3 different ready-to-post social media captions for this clip.
-Each caption should stand alone: a short hook, a one-line description,
-and 2-4 relevant hashtags, all in one block of text under 200 characters.
+Write ready-to-post social media copy for this clip:
+- "title": a short, punchy hook (under 60 characters)
+- "summary": one-line description of what the clip is about
+- "description": a longer 2-3 sentence caption suitable for a post body
+- "hashtags": 3-6 relevant hashtags, without the # symbol
 
-Return ONLY a JSON array of exactly 3 strings (no markdown, no
-commentary) — one caption per string.
+Return ONLY a JSON object (no markdown, no commentary) exactly:
+{"title": string, "summary": string, "description": string, "hashtags": string[]}
 ''';
 
     final response = await model.generateContent([Content.text(prompt)]);
-    final decoded = decodeJsonArray(_extractText(response));
-    return decoded.map((e) => (e as String).trim()).toList();
+    final decoded = _decodeJsonObject(_extractText(response));
+    return socialCopyFromJson(decoded);
+  }
+
+  Map<String, dynamic> _decodeJsonObject(String raw) {
+    var cleaned = raw.trim();
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replaceFirst(RegExp(r'^```[a-zA-Z]*\n?'), '');
+      final fenceEnd = cleaned.lastIndexOf('```');
+      if (fenceEnd != -1) cleaned = cleaned.substring(0, fenceEnd);
+    }
+    final decoded = jsonDecode(cleaned.trim());
+    if (decoded is! Map<String, dynamic>) {
+      throw FormatException('Expected a JSON object from Gemini, got: $decoded');
+    }
+    return decoded;
   }
 
   String _extractText(GenerateContentResponse response) {

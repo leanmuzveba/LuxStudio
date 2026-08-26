@@ -8,13 +8,23 @@ class AiClip {
   final int viralScore; // 0–100
   final String reason;
 
-  const AiClip({
+  /// Short tag from Gemini (e.g. "Strong Hook", "Complete Idea") shown as
+  /// a pill instead of the raw numeric score.
+  final String category;
+
+  /// Whether this clip is included in the next batch export — defaults to
+  /// true so newly suggested clips are opted in.
+  bool includeInExport;
+
+  AiClip({
     required this.id,
     required this.title,
     required this.start,
     required this.end,
     required this.viralScore,
     required this.reason,
+    this.category = '',
+    this.includeInExport = true,
   });
 
   Duration get duration => end - start;
@@ -26,6 +36,8 @@ class AiClip {
         'endMs': end.inMilliseconds,
         'viralScore': viralScore,
         'reason': reason,
+        'category': category,
+        'includeInExport': includeInExport,
       };
 
   factory AiClip.fromJson(Map<String, dynamic> json) => AiClip(
@@ -35,6 +47,8 @@ class AiClip {
         end: Duration(milliseconds: json['endMs'] as int),
         viralScore: json['viralScore'] as int,
         reason: json['reason'] as String,
+        category: json['category'] as String? ?? '',
+        includeInExport: json['includeInExport'] as bool? ?? true,
       );
 
   String get timeRangeLabel => '${_fmt(start)} – ${_fmt(end)}';

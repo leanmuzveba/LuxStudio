@@ -6,9 +6,12 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/ai_clip.dart';
 import '../models/brand_settings.dart';
+import '../models/caption_style.dart';
 import '../models/export_destination.dart';
+import '../models/export_job.dart';
 import '../models/processing_step.dart';
 import '../models/silence_range.dart';
+import '../models/social_copy.dart';
 import '../models/transcript_segment.dart';
 import '../models/video_project.dart';
 import '../services/brand_settings_store.dart';
@@ -107,6 +110,30 @@ class AppState extends ChangeNotifier {
 
   List<String> generatedCaptions = [];
 
+  /// Structured social copy for [selectedClip] — the source of truth going
+  /// forward; [generatedCaptions] is still populated alongside it as a
+  /// temporary adapter for the not-yet-redesigned Export screen.
+  SocialCopy? socialCopy;
+
+  /// How burned-in captions are styled at export — set on the (future)
+  /// Captions screen's style picker, already wired into
+  /// [exportSelectedClip].
+  CaptionStyle captionStyle = CaptionStyle.defaultStyle;
+
+  /// One entry per clip queued for the (future) batch Export screen,
+  /// keyed by [AiClip.id]. Not yet populated by [exportSelectedClip] —
+  /// that single-clip flow is replaced by batch export in a later phase.
+  Map<String, ExportJob> exportJobs = {};
+
+  void updateProjectTitle(String newTitle) {
+    final currentProject = project;
+    if (currentProject == null) return;
+    final trimmed = newTitle.trim();
+    if (trimmed.isEmpty) return;
+    currentProject.title = trimmed;
+    _notifyAndSave();
+  }
+
   void startImport(VideoProject newProject) {
     project = newProject;
     processingStageIndex = 0;
@@ -147,6 +174,7 @@ class AppState extends ChangeNotifier {
       ..add(ExportPlatform.reels);
     selectedCaptionIndex = 0;
     generatedCaptions = [];
+    socialCopy = null;
     socialCopyError = null;
     exportStatus = ExportStatus.idle;
     exportError = null;
@@ -304,7 +332,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Asks Gemini to write ready-to-post social captions for the currently
+  /// Asks Gemini to write ready-to-post social copy for the currently
   /// selected clip, replacing any previous suggestions.
   Future<void> generateSocialCopy() async {
     final clip = selectedClip;
@@ -313,10 +341,12 @@ class AppState extends ChangeNotifier {
     socialCopyError = null;
     notifyListeners();
     try {
-      generatedCaptions = await _geminiService.generateSocialCaptions(
+      final copy = await _geminiService.generateSocialCopy(
         transcript: transcript,
         clip: clip,
       );
+      socialCopy = copy;
+      generatedCaptions = _captionOptionsFrom(copy);
       selectedCaptionIndex = 0;
     } catch (e) {
       socialCopyError = e.toString();
@@ -324,6 +354,17 @@ class AppState extends ChangeNotifier {
       isGeneratingSocialCopy = false;
       _notifyAndSave();
     }
+  }
+
+  /// Adapts the new structured [SocialCopy] into the flat caption-option
+  /// list the not-yet-redesigned Export screen still shows — a temporary
+  /// bridge removed once that screen is rebuilt against [socialCopy]
+  /// directly.
+  List<String> _captionOptionsFrom(SocialCopy copy) {
+    final hashtags = copy.hashtags.map((h) => '#$h').join(' ');
+    final hook = [copy.title, copy.summary, hashtags].where((s) => s.isNotEmpty).join('\n');
+    final options = [hook, copy.description].where((s) => s.trim().isNotEmpty).toList();
+    return options;
   }
 
   /// Refreshes [brandSettings] from disk — call after the user edits
@@ -373,12 +414,14 @@ class AppState extends ChangeNotifier {
         end: clip.end,
         outputPath: outputPath,
         subtitlesPath: subtitlesPath,
+        forceStyle: subtitlesPath == null ? null : captionStyle.assForceStyle,
         logoPath: logoPath,
         lowerThirdText: lowerThirdText,
       );
 
       lastExportPath = outputPath;
       exportStatus = ExportStatus.completed;
+      currentProject.hasExported = true;
     } catch (e) {
       exportError = e.toString();
       exportStatus = ExportStatus.failed;
@@ -450,6 +493,9 @@ class AppState extends ChangeNotifier {
       ..addAll(snapshot.brandingPresets);
     selectedCaptionIndex = snapshot.selectedCaptionIndex;
     generatedCaptions = snapshot.generatedCaptions;
+    socialCopy = snapshot.socialCopy;
+    captionStyle = snapshot.captionStyle;
+    exportJobs = snapshot.exportJobs;
     selectedDestinations
       ..clear()
       ..addAll(snapshot.selectedDestinations);
@@ -473,6 +519,7 @@ class AppState extends ChangeNotifier {
   Future<void> _autosave() async {
     final currentProject = project;
     if (currentProject == null) return;
+    currentProject.updatedAt = DateTime.now();
     await _projectStore.save(ProjectSnapshot(
       project: currentProject,
       transcript: transcript,
@@ -485,6 +532,9 @@ class AppState extends ChangeNotifier {
       selectedDestinations: selectedDestinations,
       processingStageIndex: processingStageIndex,
       processingComplete: processingComplete,
+      captionStyle: captionStyle,
+      socialCopy: socialCopy,
+      exportJobs: exportJobs,
     ));
   }
 

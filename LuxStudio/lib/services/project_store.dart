@@ -4,8 +4,11 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/ai_clip.dart';
+import '../models/caption_style.dart';
 import '../models/export_destination.dart';
+import '../models/export_job.dart';
 import '../models/silence_range.dart';
+import '../models/social_copy.dart';
 import '../models/transcript_segment.dart';
 import '../models/video_project.dart';
 
@@ -23,6 +26,9 @@ class ProjectSnapshot {
   final Set<ExportPlatform> selectedDestinations;
   final int processingStageIndex;
   final bool processingComplete;
+  final CaptionStyle captionStyle;
+  final SocialCopy? socialCopy;
+  final Map<String, ExportJob> exportJobs;
 
   const ProjectSnapshot({
     required this.project,
@@ -36,6 +42,9 @@ class ProjectSnapshot {
     required this.selectedDestinations,
     required this.processingStageIndex,
     required this.processingComplete,
+    this.captionStyle = CaptionStyle.defaultStyle,
+    this.socialCopy,
+    this.exportJobs = const {},
   });
 
   Map<String, dynamic> toJson() => {
@@ -50,6 +59,9 @@ class ProjectSnapshot {
         'selectedDestinations': selectedDestinations.map((d) => d.name).toList(),
         'processingStageIndex': processingStageIndex,
         'processingComplete': processingComplete,
+        'captionStyle': captionStyle.toJson(),
+        'socialCopy': socialCopy?.toJson(),
+        'exportJobs': exportJobs.map((id, job) => MapEntry(id, job.toJson())),
       };
 
   factory ProjectSnapshot.fromJson(Map<String, dynamic> json) => ProjectSnapshot(
@@ -74,6 +86,15 @@ class ProjectSnapshot {
             .toSet(),
         processingStageIndex: json['processingStageIndex'] as int,
         processingComplete: json['processingComplete'] as bool,
+        captionStyle: json['captionStyle'] == null
+            ? CaptionStyle.defaultStyle
+            : CaptionStyle.fromJson(json['captionStyle'] as Map<String, dynamic>),
+        socialCopy: json['socialCopy'] == null
+            ? null
+            : SocialCopy.fromJson(json['socialCopy'] as Map<String, dynamic>),
+        exportJobs: (json['exportJobs'] as Map<String, dynamic>? ?? {}).map(
+          (id, job) => MapEntry(id, ExportJob.fromJson(job as Map<String, dynamic>)),
+        ),
       );
 }
 
@@ -141,6 +162,30 @@ class ProjectStore {
       return ProjectSnapshot.fromJson(json);
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Every saved project, most recently updated first — powers the Home
+  /// dashboard's recent-projects list. A snapshot file that fails to parse
+  /// (corrupt, or from a future incompatible version) is skipped rather
+  /// than failing the whole listing.
+  Future<List<ProjectSnapshot>> listAll() async {
+    try {
+      final dir = await _projectsDir();
+      final snapshots = <ProjectSnapshot>[];
+      for (final entity in dir.listSync()) {
+        if (entity is! File || !entity.path.endsWith('.json')) continue;
+        try {
+          final json = jsonDecode(entity.readAsStringSync()) as Map<String, dynamic>;
+          snapshots.add(ProjectSnapshot.fromJson(json));
+        } catch (_) {
+          // Skip a corrupt/unreadable snapshot rather than failing the list.
+        }
+      }
+      snapshots.sort((a, b) => b.project.updatedAt.compareTo(a.project.updatedAt));
+      return snapshots;
+    } catch (_) {
+      return [];
     }
   }
 }

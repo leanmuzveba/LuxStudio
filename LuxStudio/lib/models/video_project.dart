@@ -21,6 +21,18 @@ class VideoProject {
   final DateTime importedAt;
   ProjectStatus status;
 
+  /// User-facing project name shown on the Home dashboard — defaults to
+  /// [fileName] minus its extension, editable afterwards.
+  String title;
+
+  /// Bumped on every autosave; drives the Home dashboard's recency sort
+  /// and "last edited" labels.
+  DateTime updatedAt;
+
+  /// Set once a clip from this project has completed export — drives the
+  /// Home dashboard's "Exported" status pill.
+  bool hasExported;
+
   VideoProject({
     required this.id,
     required this.fileName,
@@ -32,7 +44,17 @@ class VideoProject {
     required this.height,
     required this.importedAt,
     this.status = ProjectStatus.importing,
-  });
+    String? title,
+    DateTime? updatedAt,
+    this.hasExported = false,
+  })  : title = title ?? _titleFromFileName(fileName),
+        updatedAt = updatedAt ?? importedAt;
+
+  static String _titleFromFileName(String fileName) {
+    final dot = fileName.lastIndexOf('.');
+    final base = dot == -1 ? fileName : fileName.substring(0, dot);
+    return base.isEmpty ? fileName : base;
+  }
 
   Duration get trimmedAmount => rawDuration - processedDuration;
 
@@ -47,6 +69,9 @@ class VideoProject {
         'height': height,
         'importedAt': importedAt.toIso8601String(),
         'status': status.name,
+        'title': title,
+        'updatedAt': updatedAt.toIso8601String(),
+        'hasExported': hasExported,
       };
 
   factory VideoProject.fromJson(Map<String, dynamic> json) => VideoProject(
@@ -60,5 +85,8 @@ class VideoProject {
         height: json['height'] as int,
         importedAt: DateTime.parse(json['importedAt'] as String),
         status: ProjectStatus.values.byName(json['status'] as String),
+        title: json['title'] as String?,
+        updatedAt: json['updatedAt'] == null ? null : DateTime.parse(json['updatedAt'] as String),
+        hasExported: json['hasExported'] as bool? ?? false,
       );
 }

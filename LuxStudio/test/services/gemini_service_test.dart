@@ -56,6 +56,20 @@ void main() {
       expect(clip.end, const Duration(seconds: 45));
       expect(clip.viralScore, 87);
       expect(clip.reason, 'quotable line');
+      expect(clip.category, '');
+    });
+
+    test('maps category when present', () {
+      final clip = aiClipFromJson({
+        'title': 't',
+        'startSeconds': 0,
+        'endSeconds': 1,
+        'viralScore': 50,
+        'reason': 'r',
+        'category': ' Strong Hook ',
+      }, 'id');
+
+      expect(clip.category, 'Strong Hook');
     });
 
     test('clamps an out-of-range viralScore into 0-100', () {
@@ -76,6 +90,31 @@ void main() {
         'reason': 'r',
       }, 'id');
       expect(tooLow.viralScore, 0);
+    });
+  });
+
+  group('socialCopyFromJson', () {
+    test('maps fields, trims text, and strips leading # from hashtags', () {
+      final copy = socialCopyFromJson({
+        'title': '  Big moment  ',
+        'summary': '  a summary  ',
+        'description': '  a longer description  ',
+        'hashtags': ['#faith', 'hope', '#love'],
+      });
+
+      expect(copy.title, 'Big moment');
+      expect(copy.summary, 'a summary');
+      expect(copy.description, 'a longer description');
+      expect(copy.hashtags, ['faith', 'hope', 'love']);
+    });
+
+    test('defaults missing fields to empty', () {
+      final copy = socialCopyFromJson({});
+
+      expect(copy.title, '');
+      expect(copy.summary, '');
+      expect(copy.description, '');
+      expect(copy.hashtags, isEmpty);
     });
   });
 }

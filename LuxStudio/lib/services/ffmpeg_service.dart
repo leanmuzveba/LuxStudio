@@ -142,21 +142,26 @@ class FfmpegService {
   /// Exports the [start]-[end] range of [sourcePath] as a 1080×1920
   /// vertical clip at [outputPath] — the MVP1 primary export target.
   /// Optionally burns in [subtitlesPath] (an SRT file, timestamps already
-  /// relative to [start]), a logo watermark ([logoPath], bottom-right),
-  /// and [lowerThirdText] (shown for the clip's first 3 seconds).
+  /// relative to [start]) styled by [forceStyle] (an ffmpeg `subtitles`
+  /// filter `force_style` value — see [CaptionStyle.assForceStyle] — falls
+  /// back to a plain white/outlined default when not given), a logo
+  /// watermark ([logoPath], bottom-right), and [lowerThirdText] (shown for
+  /// the clip's first 3 seconds).
   Future<void> exportClip({
     required String sourcePath,
     required Duration start,
     required Duration end,
     required String outputPath,
     String? subtitlesPath,
+    String? forceStyle,
     String? logoPath,
     String? lowerThirdText,
   }) async {
     var base = 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920';
     if (subtitlesPath != null) {
-      base += ",subtitles='${_escapeFilterValue(subtitlesPath)}':force_style="
-          "'Fontsize=20,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=2'";
+      final style = forceStyle ??
+          'Fontsize=20,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=2';
+      base += ",subtitles='${_escapeFilterValue(subtitlesPath)}':force_style='$style'";
     }
     if (lowerThirdText != null) {
       base += ",drawtext=text='${_escapeFilterValue(lowerThirdText)}':fontcolor=white:fontsize=36:"
