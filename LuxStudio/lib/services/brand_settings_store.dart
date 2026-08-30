@@ -1,34 +1,35 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/brand_settings.dart';
+import 'api_client.dart';
 
-/// Persists [BrandSettings] as a small JSON file under the app's
-/// documents directory — global app settings, not tied to one project,
-/// so they're separate from [ProjectStore]'s per-project snapshots.
-///
-/// Uses synchronous dart:io calls, same reasoning as [ProjectStore]: small
-/// files, and it sidesteps a real-world quirk where the async I/O path
-/// was observed taking multiple real seconds in a sandboxed environment
-/// while the equivalent sync call returned instantly.
+/// Persists [BrandSettings] as a small JSON string in browser storage
+/// (`shared_preferences`, backed by localStorage on web) — global app
+/// settings, not tied to one project, so they're separate from
+/// [ProjectStore]'s per-project snapshots. The logo image itself lives on
+/// the backend (see backend/app/routers/brand.py); only its URL is stored
+/// here.
 class BrandSettingsStore {
-  BrandSettingsStore({Future<Directory> Function()? documentsDirProvider})
-      : _documentsDirProvider = documentsDirProvider ?? getApplicationDocumentsDirectory;
+  static const _key = 'brand_settings';
 
-  final Future<Directory> Function() _documentsDirProvider;
+  BrandSettingsStore({
+    Future<SharedPreferences> Function()? preferencesProvider,
+    ApiClient? apiClient,
+  })  : _preferencesProvider = preferencesProvider ?? SharedPreferences.getInstance,
+        _apiClient = apiClient ?? ApiClient();
 
-  Future<File> _settingsFile() async {
-    final docs = await _documentsDirProvider();
-    return File('${docs.path}/brand_settings.json');
-  }
+  final Future<SharedPreferences> Function() _preferencesProvider;
+  final ApiClient _apiClient;
 
   Future<BrandSettings> load() async {
     try {
-      final file = await _settingsFile();
-      if (!file.existsSync()) return BrandSettings.empty;
-      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      final prefs = await _preferencesProvider();
+      final raw = prefs.getString(_key);
+      if (raw == null) return BrandSettings.empty;
+      final json = jsonDecode(raw) as Map<String, dynamic>;
       return BrandSettings.fromJson(json);
     } catch (_) {
       return BrandSettings.empty;
@@ -37,28 +38,33 @@ class BrandSettingsStore {
 
   Future<void> save(BrandSettings settings) async {
     try {
-      final file = await _settingsFile();
-      file.writeAsStringSync(jsonEncode(settings.toJson()));
+      final prefs = await _preferencesProvider();
+      await prefs.setString(_key, jsonEncode(settings.toJson()));
     } catch (_) {
       // Best-effort — a failed write shouldn't crash the settings screen.
     }
   }
 
-  /// Copies the picked image into the app sandbox (so it survives even if
-  /// the OS clears the picker's temp/cache file) and saves it as the
-  /// current logo.
-  Future<BrandSettings> updateLogo(BrandSettings current, String pickedImagePath) async {
+  /// Uploads [imageBytes] as the new logo and saves the resulting URL as
+  /// part of [current]. Returns [current] unchanged if the upload fails.
+  Future<BrandSettings> updateLogo(
+    BrandSettings current,
+    Uint8List imageBytes,
+    String filename,
+  ) async {
     try {
-      final docs = await _documentsDirProvider();
-      final brandDir = Directory('${docs.path}/brand');
-      if (!brandDir.existsSync()) brandDir.createSync(recursive: true);
-
-      final dotIndex = pickedImagePath.lastIndexOf('.');
-      final ext = dotIndex == -1 ? '.png' : pickedImagePath.substring(dotIndex);
-      final destPath = '${brandDir.path}/logo$ext';
-      File(pickedImagePath).copySync(destPath);
-
-      final updated = BrandSettings(logoPath: destPath, organizationName: current.organizationName);
+      final response = await _apiClient.postMultipart(
+        '/brand/logo',
+        fieldName: 'file',
+        bytes: imageBytes,
+        filename: filename,
+      );
+      final updated = BrandSettings(
+        logoUrl: response['logoUrl'] as String?,
+        organizationName: current.organizationName,
+        color: current.color,
+        watermarkCorner: current.watermarkCorner,
+      );
       await save(updated);
       return updated;
     } catch (_) {

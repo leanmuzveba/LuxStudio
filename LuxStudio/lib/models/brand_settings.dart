@@ -7,14 +7,18 @@ enum WatermarkCorner { topLeft, topRight, bottomLeft, bottomRight }
 /// Reusable branding details — a logo and organisation name — applied
 /// across exports when branding is enabled. Global to the app (not tied
 /// to one project), so they carry over to every new sermon imported.
+///
+/// [logoUrl] is a path relative to the backend's base URL (e.g.
+/// `/brand/logo`, see backend/app/routers/brand.py) rather than a local
+/// file — the logo lives on the backend now, not in an app sandbox.
 class BrandSettings {
-  final String? logoPath;
+  final String? logoUrl;
   final String organizationName;
   final BrandColorPreset color;
   final WatermarkCorner watermarkCorner;
 
   const BrandSettings({
-    this.logoPath,
+    this.logoUrl,
     this.organizationName = '',
     this.color = BrandColorPreset.gold,
     this.watermarkCorner = WatermarkCorner.bottomRight,
@@ -23,14 +27,14 @@ class BrandSettings {
   static const empty = BrandSettings();
 
   Map<String, dynamic> toJson() => {
-        'logoPath': logoPath,
+        'logoUrl': logoUrl,
         'organizationName': organizationName,
         'color': color.name,
         'watermarkCorner': watermarkCorner.name,
       };
 
   factory BrandSettings.fromJson(Map<String, dynamic> json) => BrandSettings(
-        logoPath: json['logoPath'] as String?,
+        logoUrl: json['logoUrl'] as String?,
         organizationName: json['organizationName'] as String? ?? '',
         color: BrandColorPreset.values.byName(json['color'] as String? ?? 'gold'),
         watermarkCorner:

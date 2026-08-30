@@ -41,13 +41,18 @@ class AppState extends ChangeNotifier {
 
   VideoProject? project;
 
+  /// The backend's base URL — for building full URLs from the
+  /// backend-relative paths its responses hand back (e.g.
+  /// [BrandSettings.logoUrl]).
+  String get backendBaseUrl => _apiClient.baseUrl;
+
   /// The URL the video player should stream from for the current project's
   /// working (or, before analysis, original) copy — see the backend's
   /// `GET /projects/{id}/video`. Null with no project loaded.
   String? get currentVideoUrl {
     final currentProject = project;
     if (currentProject == null) return null;
-    return '${_apiClient.baseUrl}/projects/${currentProject.backendProjectId}/video';
+    return '$backendBaseUrl/projects/${currentProject.backendProjectId}/video';
   }
 
   /// Global branding (logo + org name) — set in the Settings screen,

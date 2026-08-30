@@ -18,10 +18,10 @@ void main() {
 }
 
 class LuxStudioApp extends StatefulWidget {
-  /// [appState] and [mediaImportService] let tests inject fakes (real
-  /// `path_provider`/`file_picker`/ffprobe calls need platform channels
-  /// with no implementation under plain `flutter test`). Both default to
-  /// real implementations.
+  /// [appState] and [mediaImportService] let tests inject fakes (a real
+  /// `file_picker` call needs a platform channel with no implementation
+  /// under plain `flutter test`, and a real [AppState]/[MediaImportService]
+  /// would hit the actual backend). Both default to real implementations.
   const LuxStudioApp({super.key, AppState? appState, MediaImportService? mediaImportService})
       : _injectedAppState = appState,
         _injectedMediaImportService = mediaImportService;

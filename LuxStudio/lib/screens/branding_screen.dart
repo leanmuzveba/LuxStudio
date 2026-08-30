@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -84,7 +83,8 @@ class _BrandingScreenState extends State<BrandingScreen> {
     try {
       final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
       if (picked == null) return;
-      final updated = await _brandSettingsStore.updateLogo(_brandSettings, picked.path);
+      final bytes = await picked.readAsBytes();
+      final updated = await _brandSettingsStore.updateLogo(_brandSettings, bytes, picked.name);
       if (!mounted) return;
       setState(() => _brandSettings = updated);
     } finally {
@@ -94,7 +94,7 @@ class _BrandingScreenState extends State<BrandingScreen> {
 
   void _onOrgNameChanged(String value) {
     final updated = BrandSettings(
-      logoPath: _brandSettings.logoPath,
+      logoUrl: _brandSettings.logoUrl,
       organizationName: value,
       color: _brandSettings.color,
       watermarkCorner: _brandSettings.watermarkCorner,
@@ -105,7 +105,7 @@ class _BrandingScreenState extends State<BrandingScreen> {
 
   void _selectColor(BrandColorPreset color) {
     final updated = BrandSettings(
-      logoPath: _brandSettings.logoPath,
+      logoUrl: _brandSettings.logoUrl,
       organizationName: _brandSettings.organizationName,
       color: color,
       watermarkCorner: _brandSettings.watermarkCorner,
@@ -116,7 +116,7 @@ class _BrandingScreenState extends State<BrandingScreen> {
 
   void _selectCorner(WatermarkCorner corner) {
     final updated = BrandSettings(
-      logoPath: _brandSettings.logoPath,
+      logoUrl: _brandSettings.logoUrl,
       organizationName: _brandSettings.organizationName,
       color: _brandSettings.color,
       watermarkCorner: corner,
@@ -201,9 +201,12 @@ class _BrandingScreenState extends State<BrandingScreen> {
                                   ),
                                   alignment: Alignment.center,
                                   clipBehavior: Clip.antiAlias,
-                                  child: _brandSettings.logoPath == null
+                                  child: _brandSettings.logoUrl == null
                                       ? const Icon(Icons.image_outlined, color: LuxColors.textMuted)
-                                      : Image.file(File(_brandSettings.logoPath!), fit: BoxFit.contain),
+                                      : Image.network(
+                                          '${appState.backendBaseUrl}${_brandSettings.logoUrl}',
+                                          fit: BoxFit.contain,
+                                        ),
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
@@ -212,9 +215,7 @@ class _BrandingScreenState extends State<BrandingScreen> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
-                                        _brandSettings.logoPath == null
-                                            ? 'No logo set'
-                                            : _brandSettings.logoPath!.split(Platform.pathSeparator).last,
+                                        _brandSettings.logoUrl == null ? 'No logo set' : 'Logo set',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: LuxText.manrope(size: 13, weight: FontWeight.w700),
@@ -228,7 +229,7 @@ class _BrandingScreenState extends State<BrandingScreen> {
                                   ),
                                 ),
                                 LuxGhostButton(
-                                  label: _pickingLogo ? 'Opening…' : (_brandSettings.logoPath == null ? 'Choose' : 'Change'),
+                                  label: _pickingLogo ? 'Opening…' : (_brandSettings.logoUrl == null ? 'Choose' : 'Change'),
                                   onPressed: _pickingLogo ? null : _pickLogo,
                                 ),
                               ],
