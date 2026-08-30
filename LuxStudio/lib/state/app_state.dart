@@ -136,50 +136,12 @@ class AppState extends ChangeNotifier {
       );
   }
 
-  // --- Phase 5→9 transitional aliases --------------------------------------
-  // The old Silence/Captions/Clips screens still call these by name; each
-  // now just ensures the one automatic backend pipeline has run and
-  // surfaces its slice of the result, since the backend has no standalone
-  // per-step endpoints (by design — the new Analyse screen represents this
-  // as one automatic job). Removed once Phase 9 replaces those screens with
-  // the new Analyse screen, which calls runAnalysePipeline() directly.
-
-  bool isDetectingSilence = false;
-  String? silenceError;
-
-  /// [noiseFloorDb]/[minDuration] are no longer configurable — the backend
-  /// pipeline uses fixed defaults. Kept as parameters so the existing
-  /// Silence screen call site compiles unchanged.
-  Future<void> detectSilence({
-    double noiseFloorDb = -30,
-    Duration minDuration = const Duration(milliseconds: 500),
-  }) async {
-    await runAnalysePipeline();
-    isDetectingSilence = analyseStatus == 'running';
-    silenceError = analyseError;
-    notifyListeners();
-  }
-
-  bool isApplyingSilenceRemoval = false;
-
-  /// Removal already happens automatically server-side as part of
-  /// analysis — this just ensures the pipeline has run.
-  Future<void> applySilenceRemoval() async {
-    await runAnalysePipeline();
-    isApplyingSilenceRemoval = analyseStatus == 'running';
-    silenceError = analyseError;
-    notifyListeners();
-  }
-
-  bool isTranscribing = false;
-  String? transcriptionError;
-
-  Future<void> transcribeAudio() async {
-    await runAnalysePipeline();
-    isTranscribing = analyseStatus == 'running';
-    transcriptionError = analyseError;
-    notifyListeners();
-  }
+  // The old Silence/Captions screens used to call detectSilence()/
+  // applySilenceRemoval()/transcribeAudio() as Phase 5→9 transitional
+  // aliases into runAnalysePipeline(); Phase 9 replaced those screens with
+  // Analyse (which calls runAnalysePipeline() directly) and Phase 14
+  // removed the now-unused aliases. generateClipSuggestions() survives —
+  // AI Clips' regenerate action still calls it directly.
 
   bool isGeneratingClips = false;
   String? clipGenerationError;
@@ -190,8 +152,6 @@ class AppState extends ChangeNotifier {
     clipGenerationError = analyseError;
     notifyListeners();
   }
-
-  // --- End transitional aliases ---------------------------------------------
 
   bool isGeneratingSocialCopy = false;
   String? socialCopyError;
@@ -272,25 +232,13 @@ class AppState extends ChangeNotifier {
     _notifyAndSave();
   }
 
-  void toggleSilenceRangeAccepted(int index) {
-    if (index < 0 || index >= silenceRanges.length) return;
-    silenceRanges[index].accepted = !silenceRanges[index].accepted;
-    _notifyAndSave();
-  }
-
-  void toggleClipIncludeInExport(String clipId) {
-    final clip = _findClip(clipId);
-    if (clip == null) return;
-    clip.includeInExport = !clip.includeInExport;
-    _notifyAndSave();
-  }
-
-  void setAllSilenceRangesAccepted(bool accepted) {
-    for (final range in silenceRanges) {
-      range.accepted = accepted;
-    }
-    _notifyAndSave();
-  }
+  // toggleSilenceRangeAccepted/setAllSilenceRangesAccepted/
+  // toggleClipIncludeInExport removed here (Phase 14 cleanup) — each was a
+  // handler for a toggle UI that no longer exists (the old Silence
+  // screen's per-range accept/reject, and Clips' old include-in-export
+  // toggle, both retired in Phases 9/11). The underlying data
+  // (`silenceRanges`, `AiClip.includeInExport`) stays — still real,
+  // still persisted, just not currently editable from any screen.
 
   void updateCaptionStyle(CaptionStyle style) {
     captionStyle = style;
@@ -324,9 +272,14 @@ class AppState extends ChangeNotifier {
   }
 
   /// Refreshes [brandSettings] from disk — call after the user edits
-  /// branding in the Settings screen.
+  /// branding in the Settings screen. Also syncs [captionStyle]'s template
+  /// from [BrandSettings.defaultCaptionTemplate] — Settings' "Default
+  /// Caption Template" picker writes there, not to [captionStyle] directly
+  /// (which [_renderClip] actually reads at export time), so without this
+  /// the picker would silently do nothing to real exports.
   Future<void> reloadBrandSettings() async {
     brandSettings = await _brandSettingsStore.load();
+    captionStyle = captionStyle.copyWith(template: brandSettings.defaultCaptionTemplate);
     notifyListeners();
   }
 

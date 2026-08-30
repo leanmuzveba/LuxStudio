@@ -1,106 +1,126 @@
-# LuxStudio (Flutter rebuild)
+# LuxStudio
 
-An original Flutter/Dart implementation of the **LuxStudio** app concept — an
-AI-assisted sermon-to-social video editor: import a raw sermon recording, let
-AI strip silence and clean up audio, review auto-captions, pick from
-AI-ranked "viral" short-form clips, and export straight to Reels, TikTok,
-Shorts, or Stories.
+LuxStudio ("Higherlife Custom Video Studio") turns 1–2 hour sermon/teaching
+recordings into polished, captioned, branded 9:16 short clips: import a
+recording, let AI strip silence and auto-caption it, review AI-ranked clip
+candidates, then share a finished clip with AI-generated social copy.
 
-This was reverse-engineered from a written product/design description (four
-key screens: **Import & AI Processing → Video Editor → AI Suggested Clips →
-Export & Share**) — there was no existing source to copy from, so every file
-here is original Dart written to reproduce that *behavior and flow*, not a
-port of anyone else's code.
+Two parts, one repo:
 
-## What's implemented
+- **`lib/`** — the Flutter Web client (no native Android/iOS build; see
+  "Platform decision" in `CLAUDE.md`).
+- **`backend/`** — a thin Python/FastAPI service that holds the Gemini API
+  key and runs FFmpeg server-side. Neither the key nor an ffmpeg binary ever
+  ships to the browser.
 
-- **Screen 1 — Import & AI Processing**: an import prompt, then a live
-  circular progress ring animating through the 4-stage AI pipeline
-  (silence removal → audio enhancement → clip identification →
-  auto-captioning).
-- **Screen 2 — Video Editor**: a 9:16 preview pane, a 4-tab tool bar
-  (Captions / Audio / AI Cuts / Overlays), a scrubbable timeline strip that
-  visualizes audio chunks vs. trimmed silence gaps, and a scrollable,
-  inline-editable transcript.
-- **Screen 3 — AI Suggested Clips**: clips ranked by a mock "viral score,"
-  each with a 9:16 thumbnail, title, timestamp range, and an
-  **Edit & Export** action.
-- **Screen 4 — Export & Share**: multi-select destination picker, an
-  AI-generated caption chooser, branding-preset toggles, and a share action.
+The design source of truth is the static HTML/CSS kit in `ui_kit/`
+(home/analyse/editor/clips/share/settings) — the app is built to match it
+exactly. `CLAUDE.md` has the full project brief; `PIVOT_PLAN.md` has the
+phased migration history from the original native-Android build to this
+architecture.
 
-State flows through a single lightweight `AppState` (`ChangeNotifier`),
-exposed app-wide via a small `InheritedWidget` (`AppStateScope`) — no
-external state-management package required.
+## Screens
+
+- **Home** — recent teachings list, "New Sermon Project" CTA.
+- **Analyse** — automatic pipeline (silence removal → audio enhancement →
+  AI clip identification → auto-captioning) with a live progress UI.
+- **Editor** — 9:16 preview (cropped from the source, matching the export
+  aspect exactly), transport controls, segment timeline, transcript list.
+- **Clips** — AI-ranked short-form clip candidates with viral-score badges.
+- **Share** — platform picker, AI-generated caption, branding toggle,
+  save/share a rendered clip.
+- **Settings** — church profile, contact & service times, default caption
+  template, default hashtags, giving-info toggle (off by default).
 
 ## Project layout
 
 ```
 lib/
-  main.dart                    # app entry point, routes, AppStateScope
-  theme/app_theme.dart         # colors, gradients, text/typography tokens
-  models/                      # VideoProject, ProcessingStep, TranscriptSegment,
-                                # AiClip, ExportDestination, BrandingPreset
-  state/app_state.dart         # ChangeNotifier driving all 4 screens
-  screens/
-    import_processing_screen.dart
-    video_editor_screen.dart
-    ai_clips_screen.dart
-    export_share_screen.dart
-  widgets/                     # reusable pieces: gradient button, viral score
-                                # badge, circular step progress, timeline
-                                # strip, transcript list
+  main.dart                    # routes, AppStateScope
+  state/app_state.dart         # single ChangeNotifier driving every screen
+  screens/                     # one file per screen above
+  services/
+    api_client.dart            # thin HTTP client to the backend
+    project_store.dart         # shared_preferences-backed project persistence
+    brand_settings_store.dart  # shared_preferences-backed church/brand settings
+    media_import_service.dart  # file_picker -> backend upload
+  models/                      # VideoProject, AiClip, TranscriptSegment,
+                                # SilenceRange, SocialCopy, CaptionStyle,
+                                # BrandSettings, ...
+  theme/lux_theme.dart         # design tokens (colors, Inter font via
+                                # google_fonts) + lib/theme/phosphor_icons.dart
+  widgets/                     # shared LuxCard/LuxButtons/LuxBottomNav/...
 test/
-  widget_test.dart             # smoke tests for the flow
+  widget_test.dart             # boots the app with fake AppState/ApiClient
+  services/                    # pure-logic unit tests
+
+backend/
+  app/
+    main.py                    # FastAPI app, CORS, routers
+    config.py                  # env-driven settings (GEMINI_API_KEY, etc.)
+    storage.py                 # disk-backed per-project storage + TTL sweep
+    routers/                   # projects, analyse, social, exports, brand
+    services/
+      gemini_client.py         # transcription, clip suggestions, social copy
+      ffmpeg_client.py         # probe, silence detection/removal, export
+  tests/                       # pytest — gemini_client, ffmpeg_client, brand
 ```
 
 ## Running it
 
-This environment doesn't have the Flutter SDK installed, so the code was
-written and hand-reviewed carefully but not run through `flutter analyze` —
-do that first thing after unzipping. To get it onto an Android device or
-emulator:
+### Backend
 
 ```bash
-# 1. Unzip this project, then from inside the folder:
-flutter create .          # generates android/, plus a build config that
-                           # matches your installed Flutter/Gradle/SDK setup
-                           # (kept out of this bundle since it's machine- and
-                           # version-specific boilerplate, not app logic)
-
-flutter pub get
-flutter analyze           # should be clean
-flutter test               # runs test/widget_test.dart
-
-flutter run                # launches on a connected Android device/emulator
+cd backend
+python -m venv .venv
+.venv\Scripts\activate          # Windows; source .venv/bin/activate elsewhere
+pip install -r requirements.txt
 ```
 
-If `flutter create .` reports conflicts on `pubspec.yaml` or
-`analysis_options.yaml`, keep the versions already in this bundle — they're
-intentional (dark theme dependencies, `flutter_lints`).
+Create `backend/.env` (or set real env vars):
 
-## Wiring up the real thing
+```
+GEMINI_API_KEY=your-key-here
+# Optional: STORAGE_DIR, TTL_HOURS, ALLOWED_ORIGINS
+```
 
-Everything here runs on mock/simulated data so the full flow is demoable
-with zero backend. The natural next integration points are called out with
-comments in `pubspec.yaml` and in the code:
+FFmpeg must be on `PATH` for the analyse pipeline and exports to actually
+work (the backend degrades gracefully without it — uploads still succeed,
+probing/analysing/exporting fail with a clear error).
 
-- **Video import**: swap the mock `_beginImport` trigger in
-  `import_processing_screen.dart` for `file_picker` (or
-  `image_picker`'s video mode).
-- **Real preview/scrubbing**: replace the placeholder preview pane in
-  `video_editor_screen.dart` with `video_player` + a scrub-synced
-  `VideoPlayerController`.
-- **Actual AI processing**: replace `AppState._seedTranscriptAndClips()`
-  with calls to your speech-to-text / silence-detection / highlight-scoring
-  backend (or an on-device pipeline via `ffmpeg_kit_flutter`).
-- **Native share sheet**: swap the `SnackBar` in
-  `export_share_screen.dart`'s `_confirmShare` for `share_plus`.
+```bash
+uvicorn app.main:app --reload
+```
 
-## Design notes
+Serves on `http://localhost:8000` — the Flutter client's default backend URL.
 
-The visual language is a dark, editing-suite surface (`#0B0B10` background,
-`#16161D` cards) with a single warm pink→violet accent gradient
-(`AppColors.accentGradient`) reserved for primary actions and the viral-score
-badge, whose color shifts hotter (pink/orange) the higher the score. All of
-this lives in `lib/theme/app_theme.dart` as reusable tokens rather than
-inlined per-screen, so retheming is a one-file change.
+### Flutter client
+
+```bash
+flutter pub get
+flutter analyze
+flutter test
+flutter run -d chrome
+```
+
+To point at a backend that isn't on `localhost:8000`:
+
+```bash
+flutter run -d chrome --dart-define=API_BASE_URL=https://your-backend.example.com
+```
+
+### Backend tests
+
+```bash
+cd backend
+.venv\Scripts\python.exe -m pytest -q
+```
+
+## Design tokens
+
+Dark background `#1A1A1A`, body text `#D4B48C`, gold gradient
+`#F4A823 → #F5AE1F` for CTAs/active states, glass card
+`rgba(51,50,55,0.8)` (approximated as an opaque fill in Flutter — see
+`lib/theme/lux_theme.dart`'s doc comment). Inter font throughout, Phosphor
+icons for shared chrome (see `lib/theme/phosphor_icons.dart` for why that's
+hand-rolled rather than using the `phosphor_flutter` package's own API).

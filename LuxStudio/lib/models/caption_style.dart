@@ -1,11 +1,11 @@
-/// A named burned-in caption look the user can pick on the Captions
-/// screen — mirrors the "Bold Pop / Minimal / Karaoke" presets in the
-/// design mockup.
+/// A named burned-in caption look — the "Bold Word / Clean Line /
+/// Highlight" swatches on the Settings screen's Default Caption Template
+/// card pick this per church, project-level styling is a future revisit.
 enum CaptionTemplate { boldPop, minimal, karaoke }
 
-/// How burned-in captions are styled at export — feeds
-/// [FfmpegService.exportClip]'s subtitle `force_style` string via
-/// [assForceStyle].
+/// How burned-in captions are styled at export — feeds the backend's
+/// `export_clip`'s subtitle `force_style` string via [assForceStyle] (see
+/// `backend/app/services/ffmpeg_client.py`).
 class CaptionStyle {
   final CaptionTemplate template;
   final String fontFamily;
