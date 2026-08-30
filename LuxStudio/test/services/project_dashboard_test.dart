@@ -8,8 +8,7 @@ ProjectSnapshot _snapshot({bool hasExported = false, bool hasClips = false}) {
   final project = VideoProject(
     id: 'p1',
     fileName: 'sermon.mp4',
-    sourcePath: '/tmp/sermon.mp4',
-    workingPath: '/tmp/sermon.mp4',
+    backendProjectId: 'backend-p1',
     rawDuration: const Duration(minutes: 10),
     processedDuration: const Duration(minutes: 10),
     width: 1080,

@@ -115,7 +115,13 @@ class _ExportRow extends StatelessWidget {
   Future<void> _share(BuildContext context) async {
     final path = job?.outputPath;
     if (path == null) return;
-    await SharePlus.instance.share(ShareParams(files: [XFile(path)]));
+    // outputPath is a backend download route now, not a local file path —
+    // fetch the bytes and share those directly.
+    final appState = AppStateScope.of(context);
+    final bytes = await appState.downloadExport(path);
+    await SharePlus.instance.share(ShareParams(
+      files: [XFile.fromData(bytes, name: '${clip.title}.mp4', mimeType: 'video/mp4')],
+    ));
   }
 
   @override

@@ -1,7 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/ai_clip.dart';
 import '../models/caption_style.dart';
@@ -76,52 +75,40 @@ class ProjectSnapshot {
       );
 }
 
-/// Persists one [ProjectSnapshot] per project as JSON under the app's
-/// documents directory, plus a small pointer file recording which project
-/// was last active — so LuxStudio can recover it on the next launch.
+/// Persists one [ProjectSnapshot] per project as a JSON string in browser
+/// storage (`shared_preferences`, backed by localStorage on web), plus a
+/// small pointer key recording which project was last active — so
+/// LuxStudio can recover it on the next launch.
 ///
 /// Every read/write is best-effort: a missing plugin (e.g. under
-/// `flutter test`, which has no platform channel implementation), a
-/// corrupt file, or a write failure should never crash the editor — it
-/// just means autosave/recovery silently does nothing for that call.
+/// `flutter test`, which has no platform channel implementation unless
+/// mocked), a corrupt value, or a write failure should never crash the
+/// editor — it just means autosave/recovery silently does nothing for
+/// that call.
 class ProjectStore {
-  /// [documentsDirProvider] defaults to the real platform documents
-  /// directory (via `path_provider`, which needs a platform channel with
-  /// no implementation under plain `flutter test`). Tests inject a fake
-  /// (e.g. a temp directory) instead of mocking that channel.
-  ProjectStore({Future<Directory> Function()? documentsDirProvider})
-      : _documentsDirProvider = documentsDirProvider ?? getApplicationDocumentsDirectory;
+  static const _idsKey = 'project_ids';
+  static const _lastOpenKey = 'last_open_project_id';
+  static String _snapshotKey(String id) => 'project:$id';
 
-  final Future<Directory> Function() _documentsDirProvider;
+  /// [preferencesProvider] defaults to the real [SharedPreferences]
+  /// instance. Tests inject a fake by calling
+  /// `SharedPreferences.setMockInitialValues({})` before construction (the
+  /// standard pattern for this package) rather than overriding this.
+  ProjectStore({Future<SharedPreferences> Function()? preferencesProvider})
+      : _preferencesProvider = preferencesProvider ?? SharedPreferences.getInstance;
 
-  // Deliberately synchronous dart:io calls (Directory/File *Sync methods)
-  // rather than the async variants: these are small local JSON files (KBs,
-  // not media), so the sync cost is negligible, and it sidesteps a
-  // real-world quirk where the async overlapped-I/O path can take seconds
-  // to complete under some sandboxed/monitored environments (observed
-  // while testing) while the equivalent sync call returns instantly.
-
-  Future<Directory> _projectsDir() async {
-    final docs = await _documentsDirProvider();
-    final dir = Directory('${docs.path}/projects');
-    if (!dir.existsSync()) {
-      dir.createSync(recursive: true);
-    }
-    return dir;
-  }
-
-  Future<File> _lastOpenPointerFile() async {
-    final dir = await _projectsDir();
-    return File('${dir.path}/last_open.txt');
-  }
+  final Future<SharedPreferences> Function() _preferencesProvider;
 
   Future<void> save(ProjectSnapshot snapshot) async {
     try {
-      final dir = await _projectsDir();
-      final file = File('${dir.path}/${snapshot.project.id}.json');
-      file.writeAsStringSync(jsonEncode(snapshot.toJson()));
-      final pointer = await _lastOpenPointerFile();
-      pointer.writeAsStringSync(snapshot.project.id);
+      final prefs = await _preferencesProvider();
+      final id = snapshot.project.id;
+      await prefs.setString(_snapshotKey(id), jsonEncode(snapshot.toJson()));
+      final ids = prefs.getStringList(_idsKey) ?? [];
+      if (!ids.contains(id)) {
+        await prefs.setStringList(_idsKey, [...ids, id]);
+      }
+      await prefs.setString(_lastOpenKey, id);
     } catch (_) {
       // Best-effort autosave — see class doc.
     }
@@ -129,41 +116,43 @@ class ProjectStore {
 
   Future<ProjectSnapshot?> loadLast() async {
     try {
-      final pointer = await _lastOpenPointerFile();
-      if (!pointer.existsSync()) return null;
-      final id = pointer.readAsStringSync().trim();
-      if (id.isEmpty) return null;
-      final dir = await _projectsDir();
-      final file = File('${dir.path}/$id.json');
-      if (!file.existsSync()) return null;
-      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-      return ProjectSnapshot.fromJson(json);
+      final prefs = await _preferencesProvider();
+      final id = prefs.getString(_lastOpenKey);
+      if (id == null || id.isEmpty) return null;
+      return _load(prefs, id);
     } catch (_) {
       return null;
     }
   }
 
   /// Every saved project, most recently updated first — powers the Home
-  /// dashboard's recent-projects list. A snapshot file that fails to parse
+  /// dashboard's recent-projects list. A snapshot that fails to parse
   /// (corrupt, or from a future incompatible version) is skipped rather
   /// than failing the whole listing.
   Future<List<ProjectSnapshot>> listAll() async {
     try {
-      final dir = await _projectsDir();
+      final prefs = await _preferencesProvider();
+      final ids = prefs.getStringList(_idsKey) ?? [];
       final snapshots = <ProjectSnapshot>[];
-      for (final entity in dir.listSync()) {
-        if (entity is! File || !entity.path.endsWith('.json')) continue;
-        try {
-          final json = jsonDecode(entity.readAsStringSync()) as Map<String, dynamic>;
-          snapshots.add(ProjectSnapshot.fromJson(json));
-        } catch (_) {
-          // Skip a corrupt/unreadable snapshot rather than failing the list.
-        }
+      for (final id in ids) {
+        final snapshot = _load(prefs, id);
+        if (snapshot != null) snapshots.add(snapshot);
       }
       snapshots.sort((a, b) => b.project.updatedAt.compareTo(a.project.updatedAt));
       return snapshots;
     } catch (_) {
       return [];
+    }
+  }
+
+  ProjectSnapshot? _load(SharedPreferences prefs, String id) {
+    final raw = prefs.getString(_snapshotKey(id));
+    if (raw == null) return null;
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      return ProjectSnapshot.fromJson(json);
+    } catch (_) {
+      return null;
     }
   }
 }

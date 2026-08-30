@@ -17,15 +17,13 @@ dependencies:
   cupertino_icons: ^1.0.6
   file_picker: ^12.1.0
   video_player: ^2.14.0
-  ffmpeg_kit_flutter_new: ^4.6.2
   path_provider: ^2.1.6
   share_plus: ^13.3.0
-  flutter_secure_storage: ^11.0.0
-  google_generative_ai: ^0.4.7
   uuid: ^4.6.0
   image_picker: ^1.2.3
   google_fonts: ^8.2.1
   http: ^1.2.0
+  shared_preferences: ^2.2.0
 
 dev_dependencies:
   flutter_test:

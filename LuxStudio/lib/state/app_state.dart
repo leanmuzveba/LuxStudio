@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../models/ai_clip.dart';
 import '../models/brand_settings.dart';
@@ -13,9 +11,8 @@ import '../models/silence_range.dart';
 import '../models/social_copy.dart';
 import '../models/transcript_segment.dart';
 import '../models/video_project.dart';
+import '../services/api_client.dart';
 import '../services/brand_settings_store.dart';
-import '../services/ffmpeg_service.dart';
-import '../services/gemini_service.dart';
 import '../services/project_store.dart';
 
 /// App-wide state for the LuxStudio flow, shared across the four screens
@@ -24,26 +21,34 @@ import '../services/project_store.dart';
 /// This intentionally avoids a state-management package — the flow is
 /// linear and small enough that a plain ChangeNotifier plus
 /// [AnimatedBuilder]/[ListenableBuilder] keeps the example dependency-free.
+///
+/// Since the backend pivot, every AI/FFmpeg operation goes through
+/// [ApiClient] to the LuxStudio backend instead of calling
+/// `google_generative_ai`/`ffmpeg_kit_flutter_new` directly on-device —
+/// neither the Gemini key nor an ffmpeg binary ever touches the client.
 class AppState extends ChangeNotifier {
   AppState({
     ProjectStore? projectStore,
-    FfmpegService? ffmpegService,
-    GeminiService? geminiService,
+    ApiClient? apiClient,
     BrandSettingsStore? brandSettingsStore,
-    Future<Directory> Function()? documentsDirProvider,
   })  : _projectStore = projectStore ?? ProjectStore(),
-        _ffmpegService = ffmpegService ?? FfmpegService(),
-        _geminiService = geminiService ?? GeminiService(),
-        _brandSettingsStore = brandSettingsStore ?? BrandSettingsStore(),
-        _documentsDirProvider = documentsDirProvider ?? getApplicationDocumentsDirectory;
+        _apiClient = apiClient ?? ApiClient(),
+        _brandSettingsStore = brandSettingsStore ?? BrandSettingsStore();
 
   final ProjectStore _projectStore;
-  final FfmpegService _ffmpegService;
-  final GeminiService _geminiService;
+  final ApiClient _apiClient;
   final BrandSettingsStore _brandSettingsStore;
-  final Future<Directory> Function() _documentsDirProvider;
 
   VideoProject? project;
+
+  /// The URL the video player should stream from for the current project's
+  /// working (or, before analysis, original) copy — see the backend's
+  /// `GET /projects/{id}/video`. Null with no project loaded.
+  String? get currentVideoUrl {
+    final currentProject = project;
+    if (currentProject == null) return null;
+    return '${_apiClient.baseUrl}/projects/${currentProject.backendProjectId}/video';
+  }
 
   /// Global branding (logo + org name) — set in the Settings screen,
   /// applied across exports when enabled. Refresh with
@@ -54,15 +59,134 @@ class AppState extends ChangeNotifier {
   final List<AiClip> suggestedClips = [];
 
   List<SilenceRange> silenceRanges = [];
+
+  // --- Automatic analyse pipeline (backend Phase 3's atomic /analyse job:
+  // silence removal -> audio enhancement -> transcription -> clip
+  // suggestion, all in one background run) ---------------------------------
+
+  String analyseStatus = 'idle'; // idle | running | done | error
+  String? analyseStep; // silence_removal | audio_enhancement | clip_identification | captioning
+  int analysePercent = 0;
+  String? analyseError;
+
+  /// Kicks off the backend's automatic analysis pipeline for the current
+  /// project (if not already running/done — memoized per project so the
+  /// old Silence/Captions/Clips screens' separate triggers, below, don't
+  /// each re-run the whole pipeline) and polls until it finishes.
+  Future<void> runAnalysePipeline() async {
+    final currentProject = project;
+    if (currentProject == null) return;
+    if (analyseStatus == 'done' || analyseStatus == 'running') return;
+
+    analyseStatus = 'running';
+    analyseError = null;
+    notifyListeners();
+    try {
+      await _apiClient.postJson('/projects/${currentProject.backendProjectId}/analyse', {});
+      while (true) {
+        await Future.delayed(const Duration(milliseconds: 800));
+        final status =
+            await _apiClient.getJson('/projects/${currentProject.backendProjectId}/analyse/status');
+        analyseStep = status['step'] as String?;
+        analysePercent = (status['percent'] as num?)?.toInt() ?? 0;
+        final s = status['status'] as String? ?? 'error';
+        if (s == 'done') {
+          analyseStatus = 'done';
+          await _loadAnalyseResults();
+          break;
+        }
+        if (s == 'error') {
+          analyseStatus = 'error';
+          analyseError = status['error'] as String? ?? 'Analysis failed.';
+          break;
+        }
+        notifyListeners();
+      }
+    } catch (e) {
+      analyseStatus = 'error';
+      analyseError = e.toString();
+    } finally {
+      _notifyAndSave();
+    }
+  }
+
+  Future<void> _loadAnalyseResults() async {
+    final currentProject = project;
+    if (currentProject == null) return;
+    final meta = await _apiClient.getJson('/projects/${currentProject.backendProjectId}');
+
+    silenceRanges = ((meta['silence_ranges'] as List?) ?? [])
+        .map((e) => SilenceRange.fromJson(e as Map<String, dynamic>))
+        .toList();
+    transcript
+      ..clear()
+      ..addAll(
+        ((meta['transcript'] as List?) ?? [])
+            .map((e) => TranscriptSegment.fromJson(e as Map<String, dynamic>)),
+      );
+    suggestedClips
+      ..clear()
+      ..addAll(
+        ((meta['clips'] as List?) ?? []).map((e) => AiClip.fromJson(e as Map<String, dynamic>)),
+      );
+  }
+
+  // --- Phase 5→9 transitional aliases --------------------------------------
+  // The old Silence/Captions/Clips screens still call these by name; each
+  // now just ensures the one automatic backend pipeline has run and
+  // surfaces its slice of the result, since the backend has no standalone
+  // per-step endpoints (by design — the new Analyse screen represents this
+  // as one automatic job). Removed once Phase 9 replaces those screens with
+  // the new Analyse screen, which calls runAnalysePipeline() directly.
+
   bool isDetectingSilence = false;
-  bool isApplyingSilenceRemoval = false;
   String? silenceError;
+
+  /// [noiseFloorDb]/[minDuration] are no longer configurable — the backend
+  /// pipeline uses fixed defaults. Kept as parameters so the existing
+  /// Silence screen call site compiles unchanged.
+  Future<void> detectSilence({
+    double noiseFloorDb = -30,
+    Duration minDuration = const Duration(milliseconds: 500),
+  }) async {
+    await runAnalysePipeline();
+    isDetectingSilence = analyseStatus == 'running';
+    silenceError = analyseError;
+    notifyListeners();
+  }
+
+  bool isApplyingSilenceRemoval = false;
+
+  /// Removal already happens automatically server-side as part of
+  /// analysis — this just ensures the pipeline has run.
+  Future<void> applySilenceRemoval() async {
+    await runAnalysePipeline();
+    isApplyingSilenceRemoval = analyseStatus == 'running';
+    silenceError = analyseError;
+    notifyListeners();
+  }
 
   bool isTranscribing = false;
   String? transcriptionError;
 
+  Future<void> transcribeAudio() async {
+    await runAnalysePipeline();
+    isTranscribing = analyseStatus == 'running';
+    transcriptionError = analyseError;
+    notifyListeners();
+  }
+
   bool isGeneratingClips = false;
   String? clipGenerationError;
+
+  Future<void> generateClipSuggestions() async {
+    await runAnalysePipeline();
+    isGeneratingClips = analyseStatus == 'running';
+    clipGenerationError = analyseError;
+    notifyListeners();
+  }
+
+  // --- End transitional aliases ---------------------------------------------
 
   bool isGeneratingSocialCopy = false;
   String? socialCopyError;
@@ -113,6 +237,10 @@ class AppState extends ChangeNotifier {
 
   void startImport(VideoProject newProject) {
     project = newProject;
+    analyseStatus = 'idle';
+    analyseStep = null;
+    analysePercent = 0;
+    analyseError = null;
     _notifyAndSave();
   }
 
@@ -141,34 +269,6 @@ class AppState extends ChangeNotifier {
     _notifyAndSave();
   }
 
-  /// Runs silence detection against the project's original sandboxed copy
-  /// (not the current working file — always the same source timeline, so
-  /// re-detecting after edits doesn't compound against a previous trim).
-  /// [noiseFloorDb]/[minDuration] mirror [FfmpegService.detectSilence]'s
-  /// defaults so callers that don't care can omit them.
-  Future<void> detectSilence({
-    double noiseFloorDb = -30,
-    Duration minDuration = const Duration(milliseconds: 500),
-  }) async {
-    final currentProject = project;
-    if (currentProject == null) return;
-    isDetectingSilence = true;
-    silenceError = null;
-    notifyListeners();
-    try {
-      silenceRanges = await _ffmpegService.detectSilence(
-        currentProject.sourcePath,
-        noiseFloorDb: noiseFloorDb,
-        minDuration: minDuration,
-      );
-    } catch (e) {
-      silenceError = e.toString();
-    } finally {
-      isDetectingSilence = false;
-      _notifyAndSave();
-    }
-  }
-
   void toggleSilenceRangeAccepted(int index) {
     if (index < 0 || index >= silenceRanges.length) return;
     silenceRanges[index].accepted = !silenceRanges[index].accepted;
@@ -194,123 +294,24 @@ class AppState extends ChangeNotifier {
     _notifyAndSave();
   }
 
-  /// Cuts every accepted range out of the original source, closes the
-  /// gaps, and points the project at the resulting file. Re-running this
-  /// (e.g. after toggling which ranges are accepted) overwrites the same
-  /// trimmed output rather than trimming an already-trimmed file.
-  Future<void> applySilenceRemoval() async {
-    final currentProject = project;
-    if (currentProject == null) return;
-    final accepted = silenceRanges.where((r) => r.accepted).toList();
-
-    isApplyingSilenceRemoval = true;
-    silenceError = null;
-    notifyListeners();
-    try {
-      final outputPath = _trimmedPath(currentProject.sourcePath);
-      await _ffmpegService.removeRanges(
-        sourcePath: currentProject.sourcePath,
-        outputPath: outputPath,
-        rangesToRemove: accepted,
-      );
-      final removed = accepted.fold<Duration>(Duration.zero, (sum, r) => sum + r.duration);
-      currentProject.workingPath = outputPath;
-      currentProject.processedDuration = currentProject.rawDuration - removed;
-    } catch (e) {
-      silenceError = e.toString();
-    } finally {
-      isApplyingSilenceRemoval = false;
-      _notifyAndSave();
-    }
-  }
-
-  /// Reverts to the untouched original — undoes a previously applied
-  /// silence removal.
-  void restoreOriginalAudio() {
-    final currentProject = project;
-    if (currentProject == null) return;
-    currentProject.workingPath = currentProject.sourcePath;
-    currentProject.processedDuration = currentProject.rawDuration;
-    silenceRanges = [];
-    _notifyAndSave();
-  }
-
-  String _trimmedPath(String sourcePath) {
-    final dotIndex = sourcePath.lastIndexOf('.');
-    if (dotIndex == -1) return '${sourcePath}_trimmed';
-    return '${sourcePath.substring(0, dotIndex)}_trimmed${sourcePath.substring(dotIndex)}';
-  }
-
-  /// Extracts the current working file's audio track and sends it to
-  /// Gemini for transcription, replacing the transcript with the result.
-  Future<void> transcribeAudio() async {
-    final currentProject = project;
-    if (currentProject == null) return;
-    isTranscribing = true;
-    transcriptionError = null;
-    notifyListeners();
-    try {
-      final audioPath = _extractedAudioPath(currentProject.sourcePath);
-      await _ffmpegService.extractAudio(currentProject.workingPath, audioPath);
-      final audioBytes = File(audioPath).readAsBytesSync();
-      final segments = await _geminiService.transcribe(audioBytes, 'audio/aac');
-      transcript
-        ..clear()
-        ..addAll(segments);
-    } catch (e) {
-      transcriptionError = e.toString();
-    } finally {
-      isTranscribing = false;
-      _notifyAndSave();
-    }
-  }
-
-  String _extractedAudioPath(String sourcePath) {
-    final dotIndex = sourcePath.lastIndexOf('.');
-    final base = dotIndex == -1 ? sourcePath : sourcePath.substring(0, dotIndex);
-    return '${base}_audio.m4a';
-  }
-
-  /// Asks Gemini to find short-form clip candidates in the current
-  /// transcript, replacing any previous suggestions. Requires a
-  /// transcript — captions must be generated first.
-  Future<void> generateClipSuggestions() async {
-    if (project == null) return;
-    if (transcript.isEmpty) {
-      clipGenerationError = 'Transcribe captions first.';
-      notifyListeners();
-      return;
-    }
-    isGeneratingClips = true;
-    clipGenerationError = null;
-    notifyListeners();
-    try {
-      final clips = await _geminiService.suggestClips(transcript);
-      suggestedClips
-        ..clear()
-        ..addAll(clips);
-    } catch (e) {
-      clipGenerationError = e.toString();
-    } finally {
-      isGeneratingClips = false;
-      _notifyAndSave();
-    }
-  }
-
-  /// Asks Gemini to write ready-to-post social copy for the currently
+  /// Asks the backend to write ready-to-post social copy for the currently
   /// selected clip, replacing any previous suggestions.
   Future<void> generateSocialCopy() async {
     final clip = selectedClip;
-    if (clip == null) return;
+    final currentProject = project;
+    if (clip == null || currentProject == null) return;
     isGeneratingSocialCopy = true;
     socialCopyError = null;
     notifyListeners();
     try {
-      final copy = await _geminiService.generateSocialCopy(
-        transcript: transcript,
-        clip: clip,
+      final response = await _apiClient.postJson(
+        '/projects/${currentProject.backendProjectId}/social-copy',
+        {
+          'transcript': transcript.map((s) => s.toJson()).toList(),
+          'clip': clip.toJson(),
+        },
       );
-      socialCopy = copy;
+      socialCopy = SocialCopy.fromJson(response);
     } catch (e) {
       socialCopyError = e.toString();
     } finally {
@@ -330,8 +331,7 @@ class AppState extends ChangeNotifier {
   bool isBatchExporting = false;
 
   /// Renders every [AiClip.includeInExport] clip in [suggestedClips] as a
-  /// 1080×1920 MP4, one at a time (sequential — concurrent ffmpeg sessions
-  /// are too heavy for a phone), tracking each clip's progress in
+  /// 1080×1920 MP4, one at a time, tracking each clip's progress in
   /// [exportJobs] so the Export screen can show independent per-clip rows.
   Future<void> exportBatch() async {
     final currentProject = project;
@@ -371,47 +371,48 @@ class AppState extends ChangeNotifier {
     _notifyAndSave();
   }
 
-  /// Renders [clip] as a 1080×1920 MP4 — trimmed to its time range, with
-  /// matching transcript lines burned in as captions (styled per
-  /// [captionStyle]) and branding applied per the enabled presets — saved
-  /// under the app's documents directory with a meaningful filename.
-  /// Shared by [exportBatch] and [retryClipExport].
+  /// Renders [clip] as a 1080×1920 MP4 via the backend — trimmed to its
+  /// time range, with matching transcript lines burned in as captions
+  /// (styled per [captionStyle]) and branding applied per the enabled
+  /// presets. Returns the backend-relative path the finished file can be
+  /// downloaded from (see [downloadExport]). Shared by [exportBatch] and
+  /// [retryClipExport].
   Future<String> _renderClip(AiClip clip) async {
     final currentProject = project!;
-    final exportsDir = Directory('${(await _documentsDirProvider()).path}/exports');
-    if (!exportsDir.existsSync()) exportsDir.createSync(recursive: true);
 
-    String? subtitlesPath;
+    String? subtitlesSrt;
     final clipLines = transcript
         .where((s) => !s.isSilence && s.text.trim().isNotEmpty && s.end > clip.start && s.start < clip.end)
         .toList();
     if (clipLines.isNotEmpty) {
-      subtitlesPath = '${exportsDir.path}/${clip.id}.srt';
-      File(subtitlesPath).writeAsStringSync(_buildSrt(clipLines, clip.start));
+      subtitlesSrt = _buildSrt(clipLines, clip.start);
     }
 
-    final watermarkOn = _brandingEnabled('watermark');
     final lowerThirdOn = _brandingEnabled('lower_third');
-    final logoPath = watermarkOn ? brandSettings.logoPath : null;
     final orgName = brandSettings.organizationName.trim();
     final lowerThirdText = (lowerThirdOn && orgName.isNotEmpty) ? orgName : null;
 
-    final outputPath =
-        '${exportsDir.path}/${_sanitizeFileName(clip.title)}_${DateTime.now().millisecondsSinceEpoch}.mp4';
-
-    await _ffmpegService.exportClip(
-      sourcePath: currentProject.workingPath,
-      start: clip.start,
-      end: clip.end,
-      outputPath: outputPath,
-      subtitlesPath: subtitlesPath,
-      forceStyle: subtitlesPath == null ? null : captionStyle.assForceStyle,
-      logoPath: logoPath,
-      lowerThirdText: lowerThirdText,
+    // NOTE: logo upload/branding isn't wired to the backend yet (Phase 6)
+    // — omit logo_base64 for now even when the watermark preset is
+    // enabled; revisit once brand_settings_store.dart uploads the logo
+    // server-side.
+    await _apiClient.postJson(
+      '/projects/${currentProject.backendProjectId}/clips/${clip.id}/export',
+      {
+        if (subtitlesSrt != null) 'subtitles_srt': subtitlesSrt,
+        if (subtitlesSrt != null) 'force_style': captionStyle.assForceStyle,
+        if (lowerThirdText != null) 'lower_third_text': lowerThirdText,
+      },
     );
 
-    return outputPath;
+    return '/projects/${currentProject.backendProjectId}/clips/${clip.id}/export/download';
   }
+
+  /// Fetches a finished export's bytes from the backend-relative path
+  /// [_renderClip] returned in [ExportJob.outputPath] — used by the Export
+  /// screen's share action, since that path is a backend download route,
+  /// not a local file.
+  Future<Uint8List> downloadExport(String path) => _apiClient.getBytes(path);
 
   bool _brandingEnabled(String presetId) {
     for (final preset in brandingPresets) {
@@ -444,12 +445,6 @@ class AppState extends ChangeNotifier {
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     final ms = d.inMilliseconds.remainder(1000).toString().padLeft(3, '0');
     return '$h:$m:$s,$ms';
-  }
-
-  String _sanitizeFileName(String title) {
-    final safe = title.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_').replaceAll(RegExp(r'_+'), '_');
-    final trimmed = safe.replaceAll(RegExp(r'^_|_$'), '');
-    return trimmed.isEmpty ? 'clip' : trimmed;
   }
 
   /// Loads the most recently active project (if any) from disk, so the
@@ -491,6 +486,10 @@ class AppState extends ChangeNotifier {
     socialCopy = snapshot.socialCopy;
     captionStyle = snapshot.captionStyle;
     exportJobs = snapshot.exportJobs;
+    analyseStatus = transcript.isNotEmpty || suggestedClips.isNotEmpty ? 'done' : 'idle';
+    analyseStep = null;
+    analysePercent = analyseStatus == 'done' ? 100 : 0;
+    analyseError = null;
   }
 
   /// Every saved project, most recently updated first — backs the Home

@@ -5,8 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from app import storage
+from app.services.ffmpeg_client import probe
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -33,6 +35,17 @@ async def create_project(file: UploadFile = File(...)) -> dict:
             "size_bytes": size_bytes,
         }
     )
+
+    # Best-effort — ffmpeg/ffprobe may not be installed in every dev
+    # environment (raises FileNotFoundError) or may fail to read the file
+    # (raises FfmpegError); either way, a missing probe must never fail
+    # the upload itself.
+    try:
+        info = probe(dest)
+        meta.update(info)
+    except Exception:
+        pass
+
     storage.write_meta(project_id, meta)
     return meta
 
@@ -43,3 +56,20 @@ async def get_project(project_id: str) -> dict:
     if meta is None:
         raise HTTPException(status_code=404, detail="Project not found")
     return meta
+
+
+@router.get("/{project_id}/video")
+async def get_project_video(project_id: str) -> FileResponse:
+    meta = storage.read_meta(project_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    filename = meta.get("working_video_filename") or meta.get("video_filename")
+    if not filename:
+        raise HTTPException(status_code=404, detail="No video uploaded for this project")
+
+    path = storage.project_dir(project_id) / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Video file not found")
+
+    return FileResponse(path, media_type="video/mp4", filename=filename)

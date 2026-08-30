@@ -1,46 +1,59 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart' as http_testing;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:luxstudio/main.dart';
-import 'package:luxstudio/services/ffmpeg_service.dart';
+import 'package:luxstudio/services/api_client.dart';
 import 'package:luxstudio/services/media_import_service.dart';
-import 'package:luxstudio/services/project_store.dart';
 import 'package:luxstudio/state/app_state.dart';
 
-/// A fresh [AppState] backed by a temp-directory [ProjectStore], so tests
-/// never touch the real `path_provider` platform channel (which has no
-/// implementation under plain `flutter test`) or the developer's actual
-/// app-documents folder.
-AppState buildTestAppState() {
-  final tempDir = Directory.systemTemp.createTempSync('luxstudio_test_');
-  return AppState(
-    projectStore: ProjectStore(documentsDirProvider: () async => tempDir),
-  );
+/// A fake backend HTTP client so tests never make a real network call —
+/// `flutter test` has no backend running. Only `POST /projects` (the one
+/// call the tested flows actually trigger) returns a canned response;
+/// anything else gets a harmless empty JSON object.
+ApiClient buildTestApiClient() {
+  final mockClient = http_testing.MockClient.streaming((request, bodyStream) async {
+    if (request.method == 'POST' && request.url.path == '/projects') {
+      final body = jsonEncode({
+        'id': 'test-project-id',
+        'durationMs': 300000,
+        'width': 1080,
+        'height': 1920,
+      });
+      return http.StreamedResponse(
+        Stream.value(utf8.encode(body)),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return http.StreamedResponse(Stream.value(utf8.encode('{}')), 200);
+  });
+  return ApiClient(httpClient: mockClient);
 }
 
-/// Fakes ffprobe's result so tests never touch the real native plugin.
-class _FakeFfmpegService extends FfmpegService {
-  @override
-  Future<MediaInfo> probe(String path) async => const MediaInfo(
-        duration: Duration(minutes: 5),
-        width: 1080,
-        height: 1920,
-      );
+/// A fresh [AppState] backed by an in-memory (mocked) `shared_preferences`
+/// store, so tests never touch real browser/platform storage, and a fake
+/// [ApiClient] so no real backend call is made.
+AppState buildTestAppState() {
+  SharedPreferences.setMockInitialValues({});
+  return AppState(apiClient: buildTestApiClient());
 }
 
 /// A [MediaImportService] that "picks" a small real dummy file from a temp
-/// dir (so the direct-file-copy path has something real to copy) instead
-/// of opening the real native file picker, and fakes the ffprobe step too.
+/// dir instead of opening the real native file picker, and uploads it via
+/// the same fake backend client as [buildTestAppState].
 MediaImportService buildTestMediaImportService() {
   final pickedFile = File(
     '${Directory.systemTemp.createTempSync('luxstudio_test_pick_').path}/sermon.mp4',
   )..writeAsBytesSync([0]);
 
   return MediaImportService(
-    ffmpegService: _FakeFfmpegService(),
-    documentsDirProvider: () async => Directory.systemTemp.createTempSync('luxstudio_test_docs_'),
+    apiClient: buildTestApiClient(),
     pickFile: () async => PickedMediaFile(
       name: 'sermon.mp4',
       path: pickedFile.path,
@@ -52,8 +65,8 @@ MediaImportService buildTestMediaImportService() {
 /// The app briefly shows a splash screen (an indeterminate spinner —
 /// `pumpAndSettle` would never converge on it) while it checks for a
 /// project to recover. A couple of frames is enough to let that resolve
-/// (there's nothing to recover in a fresh temp dir, and ProjectStore uses
-/// synchronous file I/O — see its doc) and the screen swap happen.
+/// (there's nothing to recover in a fresh mocked store) and the screen
+/// swap happen.
 Future<void> pumpApp(
   WidgetTester tester,
   AppState appState, {
@@ -93,7 +106,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Device'));
-    // The (fake) import does its own async work (copy + probe) before
+    // The (fake) import does its own async work (upload) before
     // AppState.startImport is called and the screen navigates. Bounded
     // pumps rather than pumpAndSettle: the editor's video preview shows
     // an indeterminate spinner while its (real, unmockable under

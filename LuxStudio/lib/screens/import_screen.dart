@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../main.dart';
@@ -290,16 +288,9 @@ class _RecentFileRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    int? size;
-    try {
-      size = File(snapshot.project.sourcePath).lengthSync();
-    } catch (_) {
-      size = null;
-    }
-    final subtitle = [
-      formatProjectDuration(snapshot.project.processedDuration),
-      if (size != null) formatFileSize(size),
-    ].join(' · ');
+    // File size used to come from a local sandbox copy — that no longer
+    // exists now that media lives on the backend, so just show duration.
+    final subtitle = formatProjectDuration(snapshot.project.processedDuration);
 
     return LuxCard(
       onTap: onTap,

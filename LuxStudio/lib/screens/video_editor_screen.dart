@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -32,7 +30,7 @@ class VideoEditorScreen extends StatefulWidget {
 
 class _VideoEditorScreenState extends State<VideoEditorScreen> {
   VideoPlayerController? _controller;
-  String? _controllerPath;
+  String? _controllerUrl;
   Duration _position = Duration.zero;
   String? _seekedForClipId;
 
@@ -55,13 +53,13 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
     super.dispose();
   }
 
-  void _ensureController(String path) {
-    if (_controllerPath == path) return;
+  void _ensureController(String url) {
+    if (_controllerUrl == url) return;
     _controller?.removeListener(_onControllerUpdate);
     _controller?.dispose();
 
-    _controllerPath = path;
-    final controller = VideoPlayerController.file(File(path));
+    _controllerUrl = url;
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
     _controller = controller;
     controller.addListener(_onControllerUpdate);
     controller.initialize().then((_) {
@@ -129,7 +127,8 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
                 ),
               );
             }
-            _ensureController(project.workingPath);
+            final videoUrl = appState.currentVideoUrl;
+            if (videoUrl != null) _ensureController(videoUrl);
             _seekToSelectedClipOnce(appState.selectedClip?.id, appState.selectedClip?.start);
             final currentSegment = _currentSegment(appState.transcript);
 
@@ -210,20 +209,11 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
               ],
             ),
           ),
-          LuxIconButton(
-            icon: Icons.undo_rounded,
-            variant: LuxIconButtonVariant.subtle,
-            tooltip: 'Undo silence removal',
-            onPressed: () {
-              final appState = AppStateScope.of(context);
-              if (appState.project?.workingPath == appState.project?.sourcePath) {
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(const SnackBar(content: Text('Nothing to undo yet.')));
-                return;
-              }
-              appState.restoreOriginalAudio();
-            },
-          ),
+          // "Undo silence removal" removed here — the backend pipeline
+          // applies silence removal automatically as part of analysis, with
+          // no client-tracked original/working distinction left to restore
+          // between. Revisit if/when the Phase 9/10 editor redesign adds a
+          // real undo concept back.
           LuxIconButton(
             icon: Icons.ios_share_rounded,
             variant: LuxIconButtonVariant.filledGold,
