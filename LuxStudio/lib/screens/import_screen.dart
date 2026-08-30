@@ -55,7 +55,7 @@ class _ImportScreenState extends State<ImportScreen> {
       setState(() => _importing = true);
       appState.startImport(project);
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed(AppRoutes.editor);
+      Navigator.of(context).pushReplacementNamed(AppRoutes.analyse);
     } catch (e) {
       if (mounted) setState(() => _importError = e.toString());
     } finally {
@@ -79,7 +79,12 @@ class _ImportScreenState extends State<ImportScreen> {
     }
     if (selected == null) return;
     appState.openProject(selected);
-    Navigator.of(context).pushReplacementNamed(AppRoutes.editor);
+    // Already-analysed projects skip straight to the editor; anything
+    // resumed before analysis ever ran (or that never finished) goes
+    // through the automatic pipeline first, same as a fresh import.
+    final destination =
+        appState.analyseStatus == 'done' ? AppRoutes.editor : AppRoutes.analyse;
+    Navigator.of(context).pushReplacementNamed(destination);
   }
 
   @override

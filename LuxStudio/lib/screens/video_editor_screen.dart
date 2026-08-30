@@ -287,18 +287,9 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            LuxChip(
-              label: 'Remove Silence',
-              icon: Icons.content_cut_rounded,
-              onTap: () => Navigator.of(context).pushNamed(AppRoutes.silence),
-            ),
-            const SizedBox(width: 8),
-            LuxChip(
-              label: 'Captions',
-              icon: Icons.closed_caption_rounded,
-              onTap: () => Navigator.of(context).pushNamed(AppRoutes.captions),
-            ),
-            const SizedBox(width: 8),
+            // "Remove Silence"/"Captions" chips removed here — both now run
+            // automatically as part of the Analyse screen's pipeline right
+            // after import, with no manual per-step screen to jump back to.
             LuxChip(
               label: 'Generate Clips',
               icon: Icons.auto_awesome_rounded,

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'screens/ai_clips_screen.dart';
+import 'screens/analyse_screen.dart';
 import 'screens/branding_screen.dart';
-import 'screens/captions_screen.dart';
 import 'screens/export_share_screen.dart';
 import 'screens/import_screen.dart';
-import 'screens/silence_screen.dart';
 import 'screens/social_screen.dart';
 import 'screens/video_editor_screen.dart';
 import 'services/media_import_service.dart';
@@ -68,9 +67,8 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
         home: !_checkedRecovery ? const _SplashScreen() : const BottomNavScaffold(),
         routes: {
           AppRoutes.import: (_) => ImportScreen(mediaImportService: mediaImportService),
+          AppRoutes.analyse: (_) => const AnalyseScreen(),
           AppRoutes.editor: (_) => const VideoEditorScreen(),
-          AppRoutes.silence: (_) => const SilenceScreen(),
-          AppRoutes.captions: (_) => const CaptionsScreen(),
           AppRoutes.clips: (_) => const AiClipsScreen(),
           AppRoutes.social: (_) => const SocialScreen(),
           AppRoutes.branding: (_) => const BrandingScreen(),
@@ -99,9 +97,8 @@ class _SplashScreen extends StatelessWidget {
 class AppRoutes {
   AppRoutes._();
   static const import = '/import';
+  static const analyse = '/analyse';
   static const editor = '/editor';
-  static const silence = '/silence';
-  static const captions = '/captions';
   static const clips = '/clips';
   static const social = '/social';
   static const branding = '/branding';

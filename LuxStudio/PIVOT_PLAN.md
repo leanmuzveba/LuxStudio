@@ -62,8 +62,8 @@ Retheme tokens/fonts app-wide: `lib/theme/lux_theme.dart` (new palette, `GoogleF
 ### Phase 8 — Reskin: Home — DONE
 `lib/screens/home_screen.dart` rebuilt to match `ui_kit/home/index.html`: real church logo (`assets/branding/icon.png`, copied from the ui_kit and registered in pubspec), gold-gradient "New Sermon Project" CTA, "Recent Teachings" list. Kept real search/filter functionality (not in the static mockup, which only shows one state) restyled to fit rather than dropped. `test/widget_test.dart` updated for the renamed CTA button text.
 
-### Phase 9 — Build: Analyse (retires silence + captions)
-New `lib/screens/analyse_screen.dart`; delete `silence_screen.dart`, `captions_screen.dart`; update `main.dart` routes, `app_state.dart`.
+### Phase 9 — Build: Analyse (retires silence + captions) — DONE
+New `lib/screens/analyse_screen.dart` (progress ring, linear bar, 4-step checklist against `AppState.runAnalysePipeline()`'s already-shipped state from Phase 5; footer button is disabled while running, "Retry" on error, "Open Editor" once done). Deleted `silence_screen.dart`, `captions_screen.dart`. `main.dart`: `/analyse` route replaces `/silence`+`/captions`. `import_screen.dart`: both post-import paths now route through `/analyse` first (already-analysed resumed projects skip straight to `/editor`). `video_editor_screen.dart`: chip row's "Remove Silence"/"Captions" chips removed (no manual screen to jump to anymore). `app_state.dart` needed no changes — Phase 5 already built `runAnalysePipeline()`/`analyseStatus`/`analyseStep`/`analysePercent`/`analyseError` in the exact shape this phase needed. `test/widget_test.dart`'s import-flow test updated for the new Import→Analyse→Editor path (fake backend mock extended to answer the analyse start/poll calls).
 
 ### Phase 10 — Reskin: Editor
 `lib/screens/video_editor_screen.dart` (read `ui_kit/editor/index.html` directly — most spec is inline Tailwind, not CSS).

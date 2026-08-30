@@ -13,28 +13,39 @@ import 'package:luxstudio/services/media_import_service.dart';
 import 'package:luxstudio/state/app_state.dart';
 
 /// A fake backend HTTP client so tests never make a real network call —
-/// `flutter test` has no backend running. Only `POST /projects` (the one
-/// call the tested flows actually trigger) returns a canned response;
-/// anything else gets a harmless empty JSON object.
+/// `flutter test` has no backend running. Handles the calls the tested
+/// flows actually trigger (project create, analyse pipeline start/poll —
+/// the pipeline reports itself already "done" on the first poll, so tests
+/// don't need to simulate multiple polling rounds); anything else gets a
+/// harmless empty JSON object.
 ApiClient buildTestApiClient() {
   final mockClient = http_testing.MockClient.streaming((request, bodyStream) async {
-    if (request.method == 'POST' && request.url.path == '/projects') {
-      final body = jsonEncode({
+    final path = request.url.path;
+
+    if (request.method == 'POST' && path == '/projects') {
+      return _jsonResponse({
         'id': 'test-project-id',
         'durationMs': 300000,
         'width': 1080,
         'height': 1920,
       });
-      return http.StreamedResponse(
-        Stream.value(utf8.encode(body)),
-        200,
-        headers: {'content-type': 'application/json'},
-      );
+    }
+    if (request.method == 'POST' && path.endsWith('/analyse')) {
+      return _jsonResponse({'status': 'running', 'step': null, 'percent': 0, 'error': null});
+    }
+    if (request.method == 'GET' && path.endsWith('/analyse/status')) {
+      return _jsonResponse({'status': 'done', 'step': 'captioning', 'percent': 100, 'error': null});
     }
     return http.StreamedResponse(Stream.value(utf8.encode('{}')), 200);
   });
   return ApiClient(httpClient: mockClient);
 }
+
+http.StreamedResponse _jsonResponse(Map<String, dynamic> body) => http.StreamedResponse(
+      Stream.value(utf8.encode(jsonEncode(body))),
+      200,
+      headers: {'content-type': 'application/json'},
+    );
 
 /// A fresh [AppState] backed by an in-memory (mocked) `shared_preferences`
 /// store, so tests never touch real browser/platform storage, and a fake
@@ -99,7 +110,7 @@ void main() {
     expect(find.text('Device'), findsOneWidget);
   });
 
-  testWidgets('Picking a video from Import goes straight to the editor', (tester) async {
+  testWidgets('Picking a video from Import goes to the Analyse screen', (tester) async {
     await pumpApp(tester, buildTestAppState());
 
     await tester.tap(find.text('New Sermon Project'));
@@ -108,14 +119,19 @@ void main() {
     await tester.tap(find.text('Device'));
     // The (fake) import does its own async work (upload) before
     // AppState.startImport is called and the screen navigates. Bounded
-    // pumps rather than pumpAndSettle: the editor's video preview shows
-    // an indeterminate spinner while its (real, unmockable under
-    // `flutter test`) VideoPlayerController never finishes initializing,
-    // which pumpAndSettle would wait on forever.
+    // pumps rather than pumpAndSettle: AnalyseScreen's pipeline polling
+    // loop sleeps between polls, which pumpAndSettle would wait on forever.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Remove Silence'), findsOneWidget);
+    expect(find.text('Analyzing Sermon'), findsOneWidget);
+
+    // Let runAnalysePipeline()'s first poll (after an 800ms delay) land —
+    // the fake backend reports itself already "done" on that first poll.
+    await tester.pump(const Duration(milliseconds: 900));
+    await tester.pump();
+
+    expect(find.text('Open Editor'), findsOneWidget);
   });
 
   testWidgets('MaterialApp uses the dark LuxStudio theme', (tester) async {
