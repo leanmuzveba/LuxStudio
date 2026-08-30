@@ -59,8 +59,8 @@ Retheme tokens/fonts app-wide: `lib/theme/lux_theme.dart` (new palette, `GoogleF
 
 **`phosphor_flutter` 2.1.0 workaround**: the package's Dart API (`PhosphorIconsRegular` etc.) fails to compile on this Flutter SDK — `PhosphorIconData extends IconData`, and `IconData` is now a `final class`, with no newer package version published yet. `flutter analyze` did NOT catch this (only `flutter test`/`flutter build web` did) — worth remembering analyze alone isn't sufficient for a real compile check. Fix: kept `phosphor_flutter` as a pubspec dependency purely for its bundled font assets, and added `lib/theme/phosphor_icons.dart` — hand-picked icons as raw `IconData(codepoint, fontFamily: ..., fontPackage: 'phosphor_flutter')`, codepoints read from the installed package's own source. Extend that file (not the package's own classes) as later phases need more icons.
 
-### Phase 8 — Reskin: Home
-`lib/screens/home_screen.dart`.
+### Phase 8 — Reskin: Home — DONE
+`lib/screens/home_screen.dart` rebuilt to match `ui_kit/home/index.html`: real church logo (`assets/branding/icon.png`, copied from the ui_kit and registered in pubspec), gold-gradient "New Sermon Project" CTA, "Recent Teachings" list. Kept real search/filter functionality (not in the static mockup, which only shows one state) restyled to fit rather than dropped. `test/widget_test.dart` updated for the renamed CTA button text.
 
 ### Phase 9 — Build: Analyse (retires silence + captions)
 New `lib/screens/analyse_screen.dart`; delete `silence_screen.dart`, `captions_screen.dart`; update `main.dart` routes, `app_state.dart`.

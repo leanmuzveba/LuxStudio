@@ -85,14 +85,14 @@ void main() {
     await pumpApp(tester, buildTestAppState());
 
     expect(find.text('LuxStudio'), findsOneWidget);
-    expect(find.text('New Project'), findsOneWidget);
+    expect(find.text('New Sermon Project'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
   });
 
   testWidgets('New Project opens the import screen', (tester) async {
     await pumpApp(tester, buildTestAppState());
 
-    await tester.tap(find.text('New Project'));
+    await tester.tap(find.text('New Sermon Project'));
     await tester.pumpAndSettle();
 
     expect(find.text('Import Video'), findsOneWidget);
@@ -102,7 +102,7 @@ void main() {
   testWidgets('Picking a video from Import goes straight to the editor', (tester) async {
     await pumpApp(tester, buildTestAppState());
 
-    await tester.tap(find.text('New Project'));
+    await tester.tap(find.text('New Sermon Project'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Device'));
