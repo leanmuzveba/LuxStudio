@@ -16,6 +16,20 @@ class SocialCopy {
 
   static const empty = SocialCopy(title: '', summary: '', description: '', hashtags: []);
 
+  /// The single combined caption blob the Share screen shows — the mockup
+  /// (`ui_kit/share/index.html`) has one "AI Generated Captions" text
+  /// block, not 4 separate fields. Keeps the structured fields as the
+  /// source of truth (still independently useful) and just composes a
+  /// display string from them: the description (falling back to summary
+  /// if empty) followed by hashtags.
+  String get displayBlob {
+    final body = description.trim().isNotEmpty ? description.trim() : summary.trim();
+    final tags = hashtags.map((h) => '#$h').join(' ');
+    if (body.isEmpty) return tags;
+    if (tags.isEmpty) return body;
+    return '$body $tags';
+  }
+
   Map<String, dynamic> toJson() => {
         'title': title,
         'summary': summary,

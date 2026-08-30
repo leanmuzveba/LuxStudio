@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
@@ -6,7 +7,6 @@ import '../models/ai_clip.dart';
 import '../models/brand_settings.dart';
 import '../models/caption_style.dart';
 import '../models/export_destination.dart';
-import '../models/export_job.dart';
 import '../models/silence_range.dart';
 import '../models/social_copy.dart';
 import '../models/transcript_segment.dart';
@@ -227,10 +227,6 @@ class AppState extends ChangeNotifier {
   /// screen's style picker, feeds [_renderClip].
   CaptionStyle captionStyle = CaptionStyle.defaultStyle;
 
-  /// One entry per clip currently in (or finished with) a batch export,
-  /// keyed by [AiClip.id]. Populated by [exportBatch]/[retryClipExport].
-  Map<String, ExportJob> exportJobs = {};
-
   void updateProjectTitle(String newTitle) {
     final currentProject = project;
     if (currentProject == null) return;
@@ -265,6 +261,8 @@ class AppState extends ChangeNotifier {
     selectedClip = clip;
     socialCopy = null;
     socialCopyError = null;
+    exportedDownloadPath = null;
+    exportError = null;
     _notifyAndSave();
   }
 
@@ -332,56 +330,40 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Whether a batch export ([exportBatch]) is currently running.
-  bool isBatchExporting = false;
+  /// Whether [exportSelectedClip] is currently running.
+  bool isExportingClip = false;
+  String? exportError;
 
-  /// Renders every [AiClip.includeInExport] clip in [suggestedClips] as a
-  /// 1080×1920 MP4, one at a time, tracking each clip's progress in
-  /// [exportJobs] so the Export screen can show independent per-clip rows.
-  Future<void> exportBatch() async {
-    final currentProject = project;
-    if (currentProject == null) return;
-    final clips = suggestedClips.where((c) => c.includeInExport).toList();
-    if (clips.isEmpty) return;
+  /// The backend-relative path the most recent export can be downloaded
+  /// from (see [downloadExport]) — null until [exportSelectedClip]
+  /// succeeds for the current [selectedClip]; reset whenever a different
+  /// clip is chosen (see [chooseClip]).
+  String? exportedDownloadPath;
 
-    isBatchExporting = true;
-    for (final clip in clips) {
-      exportJobs[clip.id] = const ExportJob(status: ExportJobStatus.queued);
-    }
-    notifyListeners();
-
-    for (final clip in clips) {
-      await _runClipExportJob(clip);
-    }
-
-    isBatchExporting = false;
-    notifyListeners();
-  }
-
-  /// Re-renders a single clip that previously failed (or finished) —
-  /// exposed so the Export screen can offer a retry on a failed row
-  /// without re-running the whole batch.
-  Future<void> retryClipExport(AiClip clip) => _runClipExportJob(clip);
-
-  Future<void> _runClipExportJob(AiClip clip) async {
-    exportJobs[clip.id] = const ExportJob(status: ExportJobStatus.processing);
+  /// Renders [selectedClip] as a 1080×1920 MP4 via the backend — the
+  /// Share screen's primary action.
+  Future<void> exportSelectedClip() async {
+    final clip = selectedClip;
+    if (clip == null) return;
+    isExportingClip = true;
+    exportError = null;
     notifyListeners();
     try {
-      final outputPath = await _renderClip(clip);
-      exportJobs[clip.id] = ExportJob(status: ExportJobStatus.done, outputPath: outputPath, progress: 1);
+      exportedDownloadPath = await _renderClip(clip);
       project?.hasExported = true;
     } catch (e) {
-      exportJobs[clip.id] = ExportJob(status: ExportJobStatus.failed, error: e.toString());
+      exportError = e.toString();
+    } finally {
+      isExportingClip = false;
+      _notifyAndSave();
     }
-    _notifyAndSave();
   }
 
   /// Renders [clip] as a 1080×1920 MP4 via the backend — trimmed to its
   /// time range, with matching transcript lines burned in as captions
   /// (styled per [captionStyle]) and branding applied per the enabled
   /// presets. Returns the backend-relative path the finished file can be
-  /// downloaded from (see [downloadExport]). Shared by [exportBatch] and
-  /// [retryClipExport].
+  /// downloaded from (see [downloadExport]).
   Future<String> _renderClip(AiClip clip) async {
     final currentProject = project!;
 
@@ -393,30 +375,38 @@ class AppState extends ChangeNotifier {
       subtitlesSrt = _buildSrt(clipLines, clip.start);
     }
 
+    final watermarkOn = _brandingEnabled('watermark');
     final lowerThirdOn = _brandingEnabled('lower_third');
     final orgName = brandSettings.organizationName.trim();
     final lowerThirdText = (lowerThirdOn && orgName.isNotEmpty) ? orgName : null;
 
-    // NOTE: logo upload/branding isn't wired to the backend yet (Phase 6)
-    // — omit logo_base64 for now even when the watermark preset is
-    // enabled; revisit once brand_settings_store.dart uploads the logo
-    // server-side.
+    String? logoBase64;
+    if (watermarkOn && brandSettings.logoUrl != null) {
+      try {
+        logoBase64 = base64Encode(await downloadExport(brandSettings.logoUrl!));
+      } catch (_) {
+        // Best-effort — export still proceeds without the watermark if the
+        // logo can't be fetched.
+      }
+    }
+
     await _apiClient.postJson(
       '/projects/${currentProject.backendProjectId}/clips/${clip.id}/export',
       {
         if (subtitlesSrt != null) 'subtitles_srt': subtitlesSrt,
         if (subtitlesSrt != null) 'force_style': captionStyle.assForceStyle,
         if (lowerThirdText != null) 'lower_third_text': lowerThirdText,
+        if (logoBase64 != null) 'logo_base64': logoBase64,
       },
     );
 
     return '/projects/${currentProject.backendProjectId}/clips/${clip.id}/export/download';
   }
 
-  /// Fetches a finished export's bytes from the backend-relative path
-  /// [_renderClip] returned in [ExportJob.outputPath] — used by the Export
-  /// screen's share action, since that path is a backend download route,
-  /// not a local file.
+  /// Fetches bytes from a backend-relative path (an export download route
+  /// or the brand logo route) — used wherever a URL the backend handed
+  /// back needs to become real bytes on the client (sharing an export,
+  /// embedding the logo in a render request).
   Future<Uint8List> downloadExport(String path) => _apiClient.getBytes(path);
 
   bool _brandingEnabled(String presetId) {
@@ -490,7 +480,8 @@ class AppState extends ChangeNotifier {
       ..addAll(snapshot.brandingPresets);
     socialCopy = snapshot.socialCopy;
     captionStyle = snapshot.captionStyle;
-    exportJobs = snapshot.exportJobs;
+    exportedDownloadPath = null;
+    exportError = null;
     analyseStatus = transcript.isNotEmpty || suggestedClips.isNotEmpty ? 'done' : 'idle';
     analyseStep = null;
     analysePercent = analyseStatus == 'done' ? 100 : 0;
@@ -536,7 +527,6 @@ class AppState extends ChangeNotifier {
       brandingPresets: brandingPresets,
       captionStyle: captionStyle,
       socialCopy: socialCopy,
-      exportJobs: exportJobs,
     ));
   }
 }

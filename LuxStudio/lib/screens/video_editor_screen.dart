@@ -252,7 +252,7 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
             borderRadius: BorderRadius.circular(LuxRadii.pill),
             child: InkWell(
               borderRadius: BorderRadius.circular(LuxRadii.pill),
-              onTap: () => Navigator.of(context).pushNamed(AppRoutes.export),
+              onTap: () => Navigator.of(context).pushNamed(AppRoutes.share),
               child: Container(
                 height: 32,
                 padding: const EdgeInsets.symmetric(horizontal: 16),

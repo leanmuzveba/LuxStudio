@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ai_clip.dart';
 import '../models/caption_style.dart';
 import '../models/export_destination.dart' show BrandingPreset;
-import '../models/export_job.dart';
 import '../models/silence_range.dart';
 import '../models/social_copy.dart';
 import '../models/transcript_segment.dart';
@@ -22,7 +21,6 @@ class ProjectSnapshot {
   final List<BrandingPreset> brandingPresets;
   final CaptionStyle captionStyle;
   final SocialCopy? socialCopy;
-  final Map<String, ExportJob> exportJobs;
 
   const ProjectSnapshot({
     required this.project,
@@ -33,7 +31,6 @@ class ProjectSnapshot {
     required this.brandingPresets,
     this.captionStyle = CaptionStyle.defaultStyle,
     this.socialCopy,
-    this.exportJobs = const {},
   });
 
   Map<String, dynamic> toJson() => {
@@ -45,7 +42,6 @@ class ProjectSnapshot {
         'brandingPresets': brandingPresets.map((b) => b.toJson()).toList(),
         'captionStyle': captionStyle.toJson(),
         'socialCopy': socialCopy?.toJson(),
-        'exportJobs': exportJobs.map((id, job) => MapEntry(id, job.toJson())),
       };
 
   factory ProjectSnapshot.fromJson(Map<String, dynamic> json) => ProjectSnapshot(
@@ -69,9 +65,6 @@ class ProjectSnapshot {
         socialCopy: json['socialCopy'] == null
             ? null
             : SocialCopy.fromJson(json['socialCopy'] as Map<String, dynamic>),
-        exportJobs: (json['exportJobs'] as Map<String, dynamic>? ?? {}).map(
-          (id, job) => MapEntry(id, ExportJob.fromJson(job as Map<String, dynamic>)),
-        ),
       );
 }
 

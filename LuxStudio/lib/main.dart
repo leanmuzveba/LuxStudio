@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'screens/ai_clips_screen.dart';
 import 'screens/analyse_screen.dart';
 import 'screens/branding_screen.dart';
-import 'screens/export_share_screen.dart';
 import 'screens/import_screen.dart';
-import 'screens/social_screen.dart';
+import 'screens/share_screen.dart';
 import 'screens/video_editor_screen.dart';
 import 'services/media_import_service.dart';
 import 'state/app_state.dart';
@@ -70,9 +69,8 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
           AppRoutes.analyse: (_) => const AnalyseScreen(),
           AppRoutes.editor: (_) => const VideoEditorScreen(),
           AppRoutes.clips: (_) => const AiClipsScreen(),
-          AppRoutes.social: (_) => const SocialScreen(),
+          AppRoutes.share: (_) => const ShareScreen(),
           AppRoutes.branding: (_) => const BrandingScreen(),
-          AppRoutes.export: (_) => const ExportShareScreen(),
         },
       ),
     );
@@ -100,9 +98,8 @@ class AppRoutes {
   static const analyse = '/analyse';
   static const editor = '/editor';
   static const clips = '/clips';
-  static const social = '/social';
+  static const share = '/share';
   static const branding = '/branding';
-  static const export = '/export';
 }
 
 /// Makes the single [AppState] instance available to the whole widget
