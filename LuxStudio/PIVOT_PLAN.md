@@ -43,14 +43,16 @@ Port `ffmpeg_service.dart`'s probe/detectSilence/removeRanges/extractAudio/expor
 Add the web target, get the current app building/running in a browser, establish backend base-URL config.
 `web/` (generated), `lib/services/api_client.dart`, `pubspec.yaml` (+`http`).
 
-### Phase 5 — AppState/persistence rework (highest-risk phase)
+### Phase 5 — AppState/persistence rework (highest-risk phase) — DONE, larger than planned
 Drop `dart:io`, replace file-based persistence and direct Gemini/FFmpeg calls with backend calls.
-Rewrite `lib/services/project_store.dart`; delete `ffmpeg_service.dart`, `gemini_service.dart`, `secure_settings.dart`; rewrite `lib/state/app_state.dart`; update `lib/models/video_project.dart`; `pubspec.yaml` swaps.
+Rewrite `lib/services/project_store.dart` (shared_preferences-backed); delete `ffmpeg_service.dart`, `gemini_service.dart`, `secure_settings.dart` (+ their tests); rewrite `lib/state/app_state.dart` (adds `runAnalysePipeline()`/`analyseStatus`/`analyseStep`/`analysePercent`/`analyseError`, keeps `detectSilence`/`applySilenceRemoval`/`transcribeAudio`/`generateClipSuggestions` as clearly-commented **Phase 5→9 transitional aliases** funneling into the one atomic backend pipeline, since the backend has no standalone per-step endpoints by design); update `lib/models/video_project.dart` (`sourcePath`/`workingPath` → `backendProjectId`); `pubspec.yaml` swaps.
 
-### Phase 6 — Web-safe media I/O
-Replace remaining native-file-path assumptions: `media_import_service.dart`, `import_screen.dart`, `brand_settings_store.dart`, `brand_settings.dart` (`logoPath`→`logoUrl`), `video_editor_screen.dart` (`VideoPlayerController.networkUrl`), `export_share_screen.dart` (transitional).
+Necessarily absorbed most of Phase 6's original scope too, since `ffmpeg_service.dart`'s deletion cascaded into `media_import_service.dart` (now uploads bytes via `ApiClient`), `video_editor_screen.dart` (`VideoPlayerController.networkUrl` against `AppState.currentVideoUrl`, "Restore Original" button removed — no client-tracked original/working distinction left), `export_share_screen.dart` (share via `AppState.downloadExport()` fetching bytes from the backend, not a local path), `import_screen.dart` (dropped local file-size lookup), and `settings_screen.dart` (its entire prior purpose — Gemini key entry — is gone; reduced to a placeholder pending Phase 13's real rebuild). Backend gained a best-effort probe-on-upload and `GET /projects/{id}/video`.
 
-**Checkpoint**: working Flutter Web app talking to the real backend end-to-end, still old theme.
+### Phase 6 — Web-safe branding/logo storage — DONE, narrower than planned
+Everything else Phase 6 originally listed was already done in Phase 5 (see above). What was left: no backend endpoint existed for the global (non-project-scoped) brand logo. Added `backend/app/routers/brand.py` (`POST`/`GET /brand/logo`, stored under `storage/_brand/`, outside the TTL sweep) + tests. Rewrote `brand_settings_store.dart` (shared_preferences-backed, logo upload via `ApiClient`), `brand_settings.dart` (`logoPath`→`logoUrl`), `branding_screen.dart` (`Image.network` off `AppState.backendBaseUrl`, no more `dart:io`/`Platform`). Removed `path_provider` from `pubspec.yaml` (fully unused after these two phases).
+
+**Checkpoint**: working Flutter Web app talking to the real backend end-to-end, still old theme. `flutter build web` verified.
 
 ### Phase 7 — Design system swap
 Retheme tokens/fonts/icons app-wide: `lib/theme/lux_theme.dart`, `pubspec.yaml` (+`phosphor_flutter`), `lib/widgets/*`, `lux_bottom_nav.dart`, `bottom_nav_scaffold.dart`.
