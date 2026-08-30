@@ -68,8 +68,8 @@ New `lib/screens/analyse_screen.dart` (progress ring, linear bar, 4-step checkli
 ### Phase 10 — Reskin: Editor — DONE
 `lib/screens/video_editor_screen.dart` rewritten: header (back, title/"LUXSTUDIO EDITOR", gold EXPORT pill), 9:16 preview (deliberately cropped from the source's native 16:9 — every export is center-cropped to 1080x1920 anyway, so this is an accurate WYSIWYG, not a mismatch) with caption overlay + thin progress bar, 4-icon tool row (Captions active, Audio/AI Cuts/Overlay dimmed/inert — no backing functionality exists for those three), timeline with a playhead line, and a new scrollable transcript list with per-line SPLIT/DELETE/HIGHLIGHT actions. Only DELETE is real (`AppState.toggleMarkForCut`, unchanged); SPLIT/HIGHLIGHT show a "not available" message rather than faking it. **Gap worth flagging**: inline transcript text editing, which the now-deleted `captions_screen.dart` used to own, has no home yet — not rebuilt here, `AppState.updateTranscriptText` still exists but nothing calls it.
 
-### Phase 11 — Reskin: Clips
-`lib/screens/ai_clips_screen.dart`.
+### Phase 11 — Reskin: Clips — DONE
+`lib/screens/ai_clips_screen.dart` rewritten to match `ui_kit/clips/index.html`: featured top card (glowing viral-score badge, big overlay heading, play button) + compact secondary cards, each with its own "Edit & Export" action. No real per-clip thumbnails exist (no frame extraction built), so the image area is a styled placeholder frame, not a photo. Dropped the old batch include-in-export toggle + "Continue with N Clips" CTA (the mockup has no batch-selection UI here at all) — batch export itself isn't gone, `export_share_screen.dart` is still reachable from the Editor's EXPORT button, this screen just no longer curates which clips feed it. Pulls Phase 12's "Share becomes single-clip" direction forward slightly, but only for this screen's own entry point.
 
 ### Phase 12 — Build: Share (retires social + batch export)
 New `lib/screens/share_screen.dart`; delete `social_screen.dart`, `export_share_screen.dart`, `export_job.dart`; update `main.dart`, `app_state.dart`, `social_copy.dart`.
