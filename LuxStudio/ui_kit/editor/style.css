@@ -1,0 +1,46 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #1A1A1A;
+    color: #D4B48C;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    width: 375px;
+    height: 812px;
+    border-radius: 40px;
+}
+.gold-gradient {
+    background: linear-gradient(135deg, #F4A823 0%, #F5AE1F 100%);
+}
+.glass {
+    background: rgba(51, 50, 55, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(108, 77, 21, 0.3);
+}
+.active-dot {
+    box-shadow: 0 0 10px #F4A823;
+}
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.timeline-chunk {
+    background: #333237;
+    border-left: 3px solid #F4A823;
+}
+.silence-gap {
+    background: repeating-linear-gradient(45deg, #1A1A1A, #1A1A1A 10px, #252525 10px, #252525 20px);
+}
+.editing-overlay {
+    background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+}
+/* Brand mark - swap the src in index.html for the real logo */
+.brand-logo {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    border-radius: 4px;
+}

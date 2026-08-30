@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Clip Finder</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+
+<!-- Phosphor Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/bold/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="phone">
+
+  <header class="header">
+    <div class="header-left">
+      <button class="icon-btn">
+        <i class="ph ph-caret-left"></i>
+      </button>
+      <div class="brand">
+        <!-- Replace logo.png with your logo file (same folder as this HTML) -->
+        <img src="logo.png" alt="Logo" class="brand-logo">
+        <div class="brand-text">
+          <h1>AI Clip Finder</h1>
+          <p>Sunday Service - Part 1</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="ai-pill">
+      <i class="ph-fill ph-sparkle"></i>
+      <span>AI ACTIVE</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="section-title">
+      <h2>Recommended Shorts</h2>
+      <p>We've identified 3 viral-ready moments.</p>
+    </div>
+
+    <div class="clip-list">
+
+      <!-- Card 1: featured -->
+      <div class="clip-card clip-card--featured">
+        <div class="clip-media">
+          <div class="clip-frame">
+            <img class="clip-image" src="card-1.jpg" alt="">
+            <div class="clip-gradient clip-gradient--featured"></div>
+
+            <div class="score-badge">
+              <span class="score-dot score-dot--glow"></span>
+              <span class="score-label">98% VIRAL SCORE</span>
+            </div>
+
+            <div class="clip-overlay-text">
+              <p class="clip-eyebrow clip-eyebrow--accent">The Core Message</p>
+              <h3 class="clip-heading">FAITH IS<br><span class="accent">THE ENGINE</span></h3>
+            </div>
+
+            <div class="clip-bottom-row">
+              <div class="time-chip">
+                <i class="ph-bold ph-clock"></i>
+                <span>00:45 - 01:30</span>
+              </div>
+              <button class="play-btn">
+                <i class="ph-fill ph-play"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="clip-body">
+          <div class="clip-body-row">
+            <div>
+              <h4>"The Engine of Growth"</h4>
+              <p class="clip-subtitle">Hook: Strong opening statement on faith.</p>
+            </div>
+            <i class="ph ph-dots-three-circle-vertical clip-menu"></i>
+          </div>
+          <button class="edit-btn edit-btn--featured">
+            Edit &amp; Export <i class="ph ph-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="clip-card clip-card--muted">
+        <div class="clip-media">
+          <div class="clip-frame">
+            <img class="clip-image clip-image--muted" src="card-2.jpg" alt="">
+            <div class="clip-gradient clip-gradient--muted"></div>
+
+            <div class="score-badge">
+              <span class="score-dot"></span>
+              <span class="score-label score-label--muted">82% VIRAL SCORE</span>
+            </div>
+
+            <div class="clip-overlay-text">
+              <p class="clip-eyebrow">Inspirational</p>
+              <h3 class="clip-heading clip-heading--muted">RISE UP<br>AND WALK</h3>
+            </div>
+
+            <div class="clip-bottom-row">
+              <div class="time-chip">
+                <i class="ph-bold ph-clock"></i>
+                <span>12:20 - 13:05</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="clip-body">
+          <h4 class="clip-title--solo">"Rise Up &amp; Walk"</h4>
+          <button class="edit-btn">
+            Edit &amp; Export <i class="ph ph-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn">
+      <i class="ph ph-house"></i>
+      <span>Home</span>
+    </button>
+    <button class="nav-btn">
+      <i class="ph ph-scissors"></i>
+      <span>Editor</span>
+    </button>
+    <div class="nav-fab">
+      <i class="ph-bold ph-plus"></i>
+    </div>
+    <button class="nav-btn nav-btn--active">
+      <i class="ph-fill ph-sparkle"></i>
+      <span>Clips</span>
+    </button>
+    <button class="nav-btn">
+      <i class="ph ph-gear-six"></i>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+</div>
+
+</body>
+</html>

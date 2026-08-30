@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuxStudio Editor</title>
+
+<!-- Tailwind (utility classes, same as original) -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Google Fonts: Inter -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<!-- Phosphor Icons (regular / bold / fill weights used on this screen) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/bold/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="flex flex-col h-full w-full overflow-hidden select-none">
+
+    <div id="app" class="flex flex-col h-full w-full">
+
+        <header class="p-6 pb-2 flex items-center justify-between z-10">
+            <div class="flex items-center gap-3">
+                <button class="w-8 h-8 rounded-full glass flex items-center justify-center">
+                    <i class="ph ph-caret-left text-white"></i>
+                </button>
+                <div>
+                    <h1 class="text-white font-bold text-sm leading-tight">Sunday Service - Part 1</h1>
+                    <div class="flex items-center gap-1">
+                        <!-- LOGO GOES HERE: replace logo-placeholder.png with your logo file -->
+                        <img src="logo-placeholder.png" alt="LuxStudio logo" class="brand-logo">
+                        <p class="text-[9px] uppercase tracking-widest text-[#F4A823]">LuxStudio Editor</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button class="w-8 h-8 rounded-full glass flex items-center justify-center">
+                    <i class="ph ph-arrow-counter-clockwise text-white text-sm"></i>
+                </button>
+                <button class="px-3 h-8 rounded-full gold-gradient text-[#1A1A1A] text-[10px] font-bold">
+                    EXPORT
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 flex flex-col overflow-hidden">
+
+            <div class="px-4 py-2">
+                <div class="w-full aspect-[9/16] max-h-[320px] bg-[#000] rounded-3xl relative overflow-hidden shadow-2xl group mx-auto border border-[#333237]">
+
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <i class="ph-fill ph-play text-4xl text-white opacity-80"></i>
+                    </div>
+
+                    <div class="absolute bottom-10 left-0 w-full text-center px-6">
+                        <p class="text-xl font-black uppercase italic text-[#F4A823] drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] tracking-tight leading-tight">
+                            The Power of <br> <span class="text-white">Divine Faith</span>
+                        </p>
+                    </div>
+
+                    <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
+                        <div class="h-full bg-[#F4A823] w-[35%]"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-2 px-4 mb-4">
+                <button class="flex-1 py-2 rounded-xl glass flex flex-col items-center gap-1 border-[#F4A823]/30 border">
+                    <i class="ph ph-text-t text-[#F4A823]"></i>
+                    <span class="text-[9px] font-bold text-white uppercase">Captions</span>
+                </button>
+                <button class="flex-1 py-2 rounded-xl glass flex flex-col items-center gap-1 opacity-60">
+                    <i class="ph ph-waveform text-[#D4B48C]"></i>
+                    <span class="text-[9px] font-bold text-white uppercase">Audio</span>
+                </button>
+                <button class="flex-1 py-2 rounded-xl glass flex flex-col items-center gap-1 opacity-60">
+                    <i class="ph ph-magic-wand text-[#D4B48C]"></i>
+                    <span class="text-[9px] font-bold text-white uppercase">AI Cuts</span>
+                </button>
+                <button class="flex-1 py-2 rounded-xl glass flex flex-col items-center gap-1 opacity-60">
+                    <i class="ph ph-selection-background text-[#D4B48C]"></i>
+                    <span class="text-[9px] font-bold text-white uppercase">Overlay</span>
+                </button>
+            </div>
+
+            <div class="flex-1 bg-[#151515] rounded-t-[32px] border-t border-[#333237] flex flex-col overflow-hidden">
+
+                <div class="h-20 w-full relative border-b border-[#333237] flex flex-col justify-center">
+                    <div class="px-4 flex justify-between items-center mb-1">
+                        <span class="text-[9px] text-[#F4A823] font-bold tracking-widest">TIMELINE</span>
+                        <span class="text-white font-mono text-[10px] bg-[#333237] px-2 py-0.5 rounded">00:14.2</span>
+                    </div>
+
+                    <div class="relative w-full overflow-hidden">
+                        <div class="flex items-end gap-[2px] h-10 px-[187px]">
+                            <div class="min-w-[40px] h-6 timeline-chunk rounded-sm opacity-40"></div>
+                            <div class="min-w-[4px] silence-gap h-10 opacity-10"></div>
+                            <div class="min-w-[120px] h-8 timeline-chunk rounded-sm"></div>
+                            <div class="min-w-[20px] h-6 timeline-chunk rounded-sm relative">
+                                <div class="absolute top-0 right-0 w-[2px] h-full bg-white/20"></div>
+                            </div>
+                            <div class="min-w-[80px] h-8 timeline-chunk rounded-sm bg-[#F4A823]/20 border-[#F4A823]"></div>
+                            <div class="min-w-[60px] h-6 timeline-chunk rounded-sm"></div>
+                        </div>
+                        <div class="absolute left-1/2 top-0 bottom-0 w-[2px] bg-[#F4A823] z-10 active-dot pointer-events-none"></div>
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto hide-scrollbar p-4">
+                    <div class="space-y-4">
+                        <div class="flex gap-3 opacity-40">
+                            <span class="text-[9px] font-mono mt-1">00:08</span>
+                            <p class="text-xs text-[#D4B48C]">Grace and peace be unto you in the name of our Lord Jesus.</p>
+                        </div>
+                        <div class="flex gap-3 bg-[#F4A823]/5 p-2 rounded-xl border-l-2 border-[#F4A823]">
+                            <span class="text-[9px] font-mono mt-1 text-[#F4A823]">00:12</span>
+                            <div>
+                                <p class="text-xs text-white leading-relaxed font-medium">Faith is not just a word. <span class="bg-[#F4A823] text-[#1A1A1A] px-1">Faith is the engine that drives your spiritual growth.</span></p>
+                                <div class="flex gap-2 mt-2">
+                                    <button class="text-[9px] text-[#F4A823] font-bold">SPLIT</button>
+                                    <button class="text-[9px] text-[#F4A823] font-bold">DELETE</button>
+                                    <button class="text-[9px] text-[#F4A823] font-bold">HIGHLIGHT</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <span class="text-[9px] font-mono mt-1">00:18</span>
+                            <p class="text-xs text-[#D4B48C]">When you stand on the word, you are standing on solid ground.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <nav class="h-20 glass flex items-center justify-around px-8 rounded-t-[40px] shadow-2xl relative z-20">
+            <button class="flex flex-col items-center gap-1 text-[#D4B48C]/40">
+                <i class="ph ph-house text-xl"></i>
+                <span class="text-[9px] font-bold">Home</span>
+            </button>
+            <button class="flex flex-col items-center gap-1 text-[#F4A823]">
+                <i class="ph-fill ph-scissors text-xl"></i>
+                <span class="text-[9px] font-bold">Editor</span>
+            </button>
+            <div class="w-12 h-12 gold-gradient rounded-full flex items-center justify-center -mt-10 shadow-lg">
+                <i class="ph-bold ph-plus text-xl text-[#1A1A1A]"></i>
+            </div>
+            <button class="flex flex-col items-center gap-1 text-[#D4B48C]/40">
+                <i class="ph ph-sparkle text-xl"></i>
+                <span class="text-[9px] font-bold">Clips</span>
+            </button>
+            <button class="flex flex-col items-center gap-1 text-[#D4B48C]/40">
+                <i class="ph ph-gear-six text-xl"></i>
+                <span class="text-[9px] font-bold">Settings</span>
+            </button>
+        </nav>
+    </div>
+
+</body>
+</html>

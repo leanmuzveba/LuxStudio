@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuxStudio &mdash; Home</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Phosphor Icons (webfont) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/bold/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="app">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <img src="icon.png" alt="LuxStudio logo" class="brand-logo">
+        <div>
+          <h1 class="brand-name">LuxStudio</h1>
+          <p class="brand-tag">Higherlife Commission</p>
+        </div>
+      </div>
+      <button class="profile-btn" aria-label="Profile">
+        <i class="ph ph-user"></i>
+      </button>
+    </header>
+
+    <!-- Main -->
+    <main class="screen">
+
+      <div class="welcome">
+        <h2>Welcome Back</h2>
+        <p>Ready to edit today's teaching?</p>
+      </div>
+
+      <button class="cta-btn">
+        <span class="cta-icon"><i class="ph-bold ph-plus"></i></span>
+        <span class="cta-label">New Sermon Project</span>
+      </button>
+
+      <h3 class="section-title">Recent Teachings</h3>
+
+      <div class="teaching-list">
+
+        <div class="teaching-card">
+          <div class="teaching-thumb"><i class="ph ph-video"></i></div>
+          <div class="teaching-info">
+            <h4>Sunday Service - Part 1</h4>
+            <p>Edited 2 hours ago &bull; 45:12</p>
+          </div>
+          <i class="ph ph-dots-three-vertical teaching-menu"></i>
+        </div>
+
+        <div class="teaching-card">
+          <div class="teaching-thumb"><i class="ph ph-video"></i></div>
+          <div class="teaching-info">
+            <h4>Midweek Prayer Meeting</h4>
+            <p>Edited Yesterday &bull; 1:12:00</p>
+          </div>
+          <i class="ph ph-dots-three-vertical teaching-menu"></i>
+        </div>
+
+        <div class="teaching-card">
+          <div class="teaching-thumb"><i class="ph ph-video"></i></div>
+          <div class="teaching-info">
+            <h4>Youth Revival 2024</h4>
+            <p>Edited 3 days ago &bull; 38:40</p>
+          </div>
+          <i class="ph ph-dots-three-vertical teaching-menu"></i>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav">
+      <button class="nav-item active">
+        <i class="ph-fill ph-house"></i>
+        <span>Home</span>
+      </button>
+      <button class="nav-item">
+        <i class="ph ph-scissors"></i>
+        <span>Editor</span>
+      </button>
+      <div class="nav-fab">
+        <i class="ph-bold ph-plus"></i>
+      </div>
+      <button class="nav-item">
+        <i class="ph ph-sparkle"></i>
+        <span>Clips</span>
+      </button>
+      <button class="nav-item">
+        <i class="ph ph-gear-six"></i>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+  </div>
+
+</body>
+</html>

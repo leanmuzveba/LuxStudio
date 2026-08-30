@@ -1,0 +1,515 @@
+/* ==========================================================================
+   AI Clip Finder — reverse-engineered UI
+   Palette:
+     background:        #1A1A1A
+     body text:         #D4B48C
+     accent (gold):      #F4A823  ->  #F5AE1F (gradient)
+     card surface:       #252525
+     button surface:     #333237  (hover #3D3C42)
+     hairline / border:  #6C4D15 (used at low opacity)
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: #1A1A1A;
+  color: #D4B48C;
+  display: flex;
+  justify-content: center;
+}
+
+/* Reusable effects, matching the source's custom utility classes ---------- */
+
+.gold-gradient,
+.nav-fab,
+.play-btn {
+  background: linear-gradient(135deg, #F4A823 0%, #F5AE1F 100%);
+}
+
+.glass,
+.icon-btn,
+.ai-pill,
+.time-chip,
+.bottom-nav {
+  background: rgba(51, 50, 55, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(108, 77, 21, 0.3);
+}
+
+.score-badge {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(244, 168, 35, 0.4);
+}
+
+.card-shadow {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Phone frame -------------------------------------------------------------- */
+
+.phone {
+  width: 390px;
+  height: 812px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Header -------------------------------------------------------------------- */
+
+.header {
+  padding: 24px 24px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  flex: none;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* Drop your logo file in as logo.png (or update the src in index.html) */
+.brand-logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  object-fit: contain;
+  flex: none;
+}
+
+.brand-text {
+  min-width: 0;
+}
+
+.brand-text h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.brand-text p {
+  margin: 2px 0 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #F4A823;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  flex: none;
+  white-space: nowrap;
+}
+
+.ai-pill i {
+  color: #F4A823;
+  font-size: 14px;
+}
+
+.ai-pill span {
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* Main / scroll area --------------------------------------------------------- */
+
+.main {
+  flex: 1;
+  padding: 16px 24px 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.main::-webkit-scrollbar {
+  display: none;
+}
+
+.section-title {
+  margin-bottom: 24px;
+}
+
+.section-title h2 {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.section-title p {
+  margin: 0;
+  font-size: 14px;
+  color: #D4B48C;
+  opacity: 0.7;
+}
+
+.clip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding-bottom: 128px;
+}
+
+/* Clip card ------------------------------------------------------------------ */
+
+.clip-card {
+  position: relative;
+}
+
+.clip-card--muted {
+  opacity: 0.8;
+}
+
+.clip-media {
+  background: rgba(51, 50, 55, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(108, 77, 21, 0.3);
+  border-radius: 32px;
+  overflow: hidden;
+  padding: 8px;
+}
+
+.clip-card--featured .clip-media {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.clip-frame {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  width: 100%;
+  background: #252525;
+  border-radius: 26px;
+  overflow: hidden;
+}
+
+.clip-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  filter: grayscale(1);
+  opacity: 0.5;
+  transition: filter 0.7s, opacity 0.7s;
+}
+
+.clip-image--muted {
+  opacity: 0.4;
+}
+
+.clip-card--featured .clip-frame:hover .clip-image {
+  filter: grayscale(0);
+}
+
+.clip-gradient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.clip-gradient--featured {
+  background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0) 55%, rgba(0,0,0,0.2));
+}
+
+.clip-gradient--muted {
+  background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0) 60%);
+}
+
+.score-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.score-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.score-dot--glow {
+  background: #F4A823;
+  box-shadow: 0 0 8px #F4A823;
+}
+
+.score-label {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.score-label--muted {
+  opacity: 0.8;
+}
+
+.clip-overlay-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+}
+
+.clip-eyebrow {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #fff;
+  opacity: 0.4;
+}
+
+.clip-eyebrow--accent {
+  color: #F4A823;
+  opacity: 1;
+}
+
+.clip-heading {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 0.9;
+  text-transform: uppercase;
+  font-style: italic;
+  color: #fff;
+}
+
+.clip-heading--muted {
+  opacity: 0.6;
+}
+
+.clip-heading .accent {
+  color: #F4A823;
+}
+
+.clip-bottom-row {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.time-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.time-chip i {
+  font-size: 10px;
+  color: #D4B48C;
+}
+
+.time-chip span {
+  font-size: 10px;
+  color: #fff;
+  font-family: monospace;
+}
+
+.play-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 15px rgba(249, 115, 22, 0.2);
+  cursor: pointer;
+}
+
+.play-btn i {
+  color: #1A1A1A;
+  font-size: 16px;
+}
+
+/* Card body (below the media) ------------------------------------------------ */
+
+.clip-body {
+  padding: 16px;
+}
+
+.clip-body-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.clip-body h4,
+.clip-title--solo {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.clip-title--solo {
+  margin-bottom: 12px;
+}
+
+.clip-subtitle {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #D4B48C;
+  opacity: 0.6;
+}
+
+.clip-menu {
+  font-size: 24px;
+  color: #6C4D15;
+}
+
+.edit-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  background: #333237;
+  border: 1px solid rgba(108, 77, 21, 0.3);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.edit-btn--featured {
+  border-color: rgba(108, 77, 21, 0.5);
+}
+
+.edit-btn:hover {
+  background: #3D3C42;
+}
+
+.edit-btn i {
+  font-size: 12px;
+}
+
+/* Bottom nav ------------------------------------------------------------------ */
+
+.bottom-nav {
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 32px;
+  border-top: none;
+  border-radius: 40px 40px 0 0;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+}
+
+.nav-btn {
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: rgba(212, 180, 140, 0.4);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.nav-btn i {
+  font-size: 24px;
+}
+
+.nav-btn span {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.nav-btn--active {
+  color: #F4A823;
+}
+
+.nav-fab {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -48px;
+  box-shadow: 0 10px 30px rgba(244, 168, 35, 0.4);
+}
+
+.nav-fab i {
+  font-size: 24px;
+  color: #1A1A1A;
+}

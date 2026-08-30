@@ -1,0 +1,205 @@
+/* ==========================================================================
+   Share Clip — reconstructed styles
+   Self-contained CSS: no CSS framework/CDN required at runtime.
+   Colors kept identical to the source design:
+     background:  #1A1A1A
+     accent gold: #F4A823 -> #F5AE1F (gradient)
+     body text:   #D4B48C
+     card border: #333237
+     icon border: #6C4D15
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #1A1A1A;
+  color: #D4B48C;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+button {
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Mobile-frame wrapper: the source design was authored as a fixed
+   375x812 (iPhone-sized) canvas. Centered here on a dark page background
+   so it reads correctly when opened directly in a browser. */
+.phone-frame {
+  width: 375px;
+  height: 812px;
+  max-width: 100vw;
+  max-height: 100vh;
+  position: relative;
+  background-color: #1A1A1A;
+  overflow: hidden;
+}
+
+/* ---- custom component styles (from the source stylesheet) ---- */
+
+.gold-gradient {
+  background: linear-gradient(135deg, #F4A823 0%, #F5AE1F 100%);
+}
+
+.glass {
+  background: rgba(51, 50, 55, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(108, 77, 21, 0.3);
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.platform-active {
+  border: 2px solid #F4A823;
+  background: rgba(244, 168, 35, 0.1);
+}
+
+/* ---- layout utilities ---- */
+
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.items-end { align-items: flex-end; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.flex-1 { flex: 1 1 0%; }
+.flex-shrink-0 { flex-shrink: 0; }
+.flex-grow-2 { flex: 2 2 0%; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
+.space-y-3 > * + * { margin-top: 12px; }
+
+.relative { position: relative; }
+.absolute { position: absolute; }
+.fixed { position: fixed; }
+.inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+.top-4 { top: 16px; }
+.right-4 { right: 16px; }
+.bottom-3 { bottom: 12px; }
+.left-3 { left: 12px; }
+.right-3 { right: 12px; }
+.bottom-0 { bottom: 0; }
+.left-0 { left: 0; }
+.right-0 { right: 0; }
+.bottom-32 { bottom: 128px; }
+.left-6 { left: 24px; }
+.right-6 { right: 24px; }
+.z-10 { z-index: 10; }
+.z-30 { z-index: 30; }
+.z-50 { z-index: 50; }
+
+.w-4 { width: 16px; }
+.h-4 { height: 16px; }
+.w-10 { width: 40px; }
+.h-10 { height: 40px; }
+.w-12 { width: 48px; }
+.h-12 { height: 48px; }
+.h-1 { height: 4px; }
+.w-24 { width: 96px; }
+.h-24 { height: 96px; }
+.w-48 { width: 192px; }
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.ml-auto { margin-left: auto; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.mb-4 { margin-bottom: 16px; }
+.mb-8 { margin-bottom: 32px; }
+.mb-12 { margin-bottom: 48px; }
+.p-1 { padding: 4px; }
+.p-4 { padding: 16px; }
+.p-5 { padding: 20px; }
+.p-6 { padding: 24px; }
+.px-1 { padding-left: 4px; padding-right: 4px; }
+.px-6 { padding-left: 24px; padding-right: 24px; }
+.pr-8 { padding-right: 32px; }
+.py-4 { padding-top: 16px; padding-bottom: 16px; }
+.pb-24 { padding-bottom: 96px; }
+
+.aspect-video-9-16 { aspect-ratio: 9 / 16; }
+.w-1-3 { width: 33.3333%; }
+
+.overflow-hidden { overflow: hidden; }
+.overflow-y-auto { overflow-y: auto; }
+.overflow-x-auto { overflow-x: auto; }
+
+.rounded-full { border-radius: 9999px; }
+.rounded-xl { border-radius: 12px; }
+.rounded-2xl { border-radius: 16px; }
+.rounded-3xl { border-radius: 24px; }
+.rounded-t-40 { border-top-left-radius: 40px; border-top-right-radius: 40px; }
+
+.border { border-width: 1px; border-style: solid; }
+.border-2 { border-width: 2px; border-style: solid; }
+.border-l-4 { border-left-width: 4px; border-left-style: solid; }
+.border-t-0 { border-top-width: 0; }
+.border-frame { border-color: #333237; }
+.border-icon-box { border-color: #6C4D15; }
+.border-gold { border-color: #F4A823; }
+
+.cursor-pointer { cursor: pointer; }
+
+.shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+.shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3); }
+
+.backdrop-blur-md { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+
+.transition-transform { transition-property: transform; }
+.duration-500 { transition-duration: 500ms; }
+.translate-y-48 { transform: translateY(192px); }
+
+/* ---- color / background utilities ---- */
+
+.bg-frame { background-color: #1A1A1A; }
+.bg-black-20 { background-color: rgba(0, 0, 0, 0.2); }
+.bg-white-20 { background-color: rgba(255, 255, 255, 0.2); }
+.bg-white-30 { background-color: rgba(255, 255, 255, 0.3); }
+.bg-gold { background-color: #F4A823; }
+
+.text-white { color: #ffffff; }
+.text-white-40 { color: rgba(255, 255, 255, 0.4); }
+.text-gold { color: #F4A823; }
+.text-dark { color: #1A1A1A; }
+.opacity-60 { opacity: 0.6; }
+
+/* ---- typography utilities ---- */
+
+.text-8 { font-size: 8px; }
+.text-10 { font-size: 10px; }
+.text-sm { font-size: 14px; }
+.text-lg { font-size: 18px; }
+.text-xl { font-size: 20px; }
+.text-2xl { font-size: 24px; }
+.font-medium { font-weight: 500; }
+.font-bold { font-weight: 700; }
+.font-black { font-weight: 900; }
+.uppercase { text-transform: uppercase; }
+.text-center { text-align: center; }
+.leading-tight { line-height: 1.2; }
+.leading-relaxed { line-height: 1.6; }
+.tracking-widest { letter-spacing: 0.1em; }
+.tracking-wider2 { letter-spacing: 0.2em; }

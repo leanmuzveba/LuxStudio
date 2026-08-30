@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuxStudio — Analyzing Sermon</title>
+
+<!-- Google Fonts: Inter -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+
+    <header class="app-header">
+        <div class="brand">
+            <div class="logo-badge">
+                <img src="logo.png" alt="LuxStudio logo">
+            </div>
+            <div class="brand-text">
+                <h1>LuxStudio</h1>
+                <p>Higherlife Commission</p>
+            </div>
+        </div>
+        <button class="close-btn glass" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+    </header>
+
+    <main class="app-main">
+
+        <section class="status-card glass">
+            <div class="progress-ring-wrap">
+                <div class="progress-ring-track"></div>
+                <svg class="progress-ring-svg" viewBox="0 0 128 128">
+                    <circle cx="64" cy="64" r="61" stroke="#F4A823" stroke-width="3" fill="transparent"
+                            stroke-dasharray="383" stroke-dashoffset="134" stroke-linecap="round"></circle>
+                </svg>
+                <div class="progress-ring-label">
+                    <span class="pct">65%</span>
+                    <span class="status">Processing</span>
+                </div>
+            </div>
+
+            <h2 class="status-title">Analyzing Sermon</h2>
+            <p class="status-desc">Our AI is extracting the most powerful moments for you.</p>
+
+            <div class="progress-container">
+                <div class="progress-bar"></div>
+            </div>
+            <div class="progress-meta">
+                <span>Optimizing</span>
+                <span>Est. 45s Left</span>
+            </div>
+        </section>
+
+        <ul class="steps-list">
+            <li class="step">
+                <div class="step-icon done">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1.5 14.5-4-4 1.4-1.4 2.6 2.6 6.1-6.1L18 8.9z"/></svg>
+                </div>
+                <div class="step-body">
+                    <h4>Silence Removal</h4>
+                    <p>4:12 of dead air trimmed</p>
+                </div>
+            </li>
+
+            <li class="step">
+                <div class="step-icon done">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1.5 14.5-4-4 1.4-1.4 2.6 2.6 6.1-6.1L18 8.9z"/></svg>
+                </div>
+                <div class="step-body">
+                    <h4>Audio Enhancement</h4>
+                    <p>Voice clarity normalized</p>
+                </div>
+            </li>
+
+            <li class="step">
+                <div class="step-icon active">
+                    <span class="pulse-dot"></span>
+                </div>
+                <div class="step-body active">
+                    <h4>AI Clip Identification</h4>
+                    <p>Scanning for high-impact segments...</p>
+                </div>
+            </li>
+
+            <li class="step pending">
+                <div class="step-icon pending">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+                </div>
+                <div class="step-body">
+                    <h4>Auto-Captioning</h4>
+                    <p>Waiting to start...</p>
+                </div>
+            </li>
+        </ul>
+    </main>
+
+    <footer class="app-footer">
+        <button class="finalize-btn glass" disabled>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 9V7a5 5 0 0 0-10 0v2a3 3 0 0 0-3 3v7a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-7a3 3 0 0 0-3-3zM9 7a3 3 0 0 1 6 0v2H9z"/></svg>
+            Finalizing Workspace
+        </button>
+    </footer>
+
+    <nav class="app-nav glass">
+        <button class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+            <span>Home</span>
+        </button>
+        <button class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 8.5L19 19M19 5L8.5 15.5"/></svg>
+            <span>Editor</span>
+        </button>
+        <button class="nav-fab gold-gradient">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button class="nav-item">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.8L21 11l-6.8 2.2L12 20l-2.2-6.8L3 11l6.8-2.2z"/></svg>
+            <span>Clips</span>
+        </button>
+        <button class="nav-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg>
+            <span>Settings</span>
+        </button>
+    </nav>
+
+</body>
+</html>

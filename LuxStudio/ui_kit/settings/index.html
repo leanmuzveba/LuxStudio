@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuxStudio — Settings</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+<!-- Phosphor Icons (webfont) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/bold/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="app">
+
+    <!-- Header -->
+    <header class="header">
+      <button class="icon-btn glass" aria-label="Back">
+        <i class="ph ph-caret-left"></i>
+      </button>
+      <div class="header-title">
+        <h1>Church Settings</h1>
+        <p>Branding &amp; Configuration</p>
+      </div>
+      <button class="save-pill gold-gradient">Save</button>
+    </header>
+
+    <!-- Main -->
+    <main class="screen">
+
+      <!-- Church Profile -->
+      <section class="card">
+        <h3 class="card-title"><i class="ph ph-buildings"></i> Church Profile</h3>
+
+        <div class="logo-row">
+          <div class="logo-preview">
+            <img src="icon.png" alt="Church logo">
+          </div>
+          <button class="ghost-btn">
+            <i class="ph ph-upload-simple"></i> Change Logo
+          </button>
+        </div>
+
+        <label class="field">
+          <span class="field-label">Church Name</span>
+          <input type="text" value="Higherlife Commission" placeholder="Church name">
+        </label>
+      </section>
+
+      <!-- Contact & Service Times -->
+      <section class="card">
+        <h3 class="card-title"><i class="ph ph-map-pin"></i> Contact &amp; Service Times</h3>
+
+        <label class="field">
+          <span class="field-label">Address</span>
+          <textarea rows="2" placeholder="Church address">65 11th Road, Kew, Johannesburg, Gauteng, South Africa, 2090</textarea>
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span class="field-label">Sunday Service</span>
+            <input type="text" value="9:00 AM – 12:00 PM">
+          </label>
+          <label class="field">
+            <span class="field-label">Thursday Service</span>
+            <input type="text" value="6:00 PM – 8:00 PM">
+          </label>
+        </div>
+
+        <button class="add-row-btn">
+          <i class="ph-bold ph-plus"></i> Add Another Service Time
+        </button>
+      </section>
+
+      <!-- Caption Template Default -->
+      <section class="card">
+        <h3 class="card-title"><i class="ph ph-text-t"></i> Default Caption Template</h3>
+        <p class="card-sub">Applied to every new clip. Change anytime per-project in the editor.</p>
+
+        <div class="template-row">
+          <button class="template-swatch selected">
+            <span class="swatch-preview swatch-1">Aa</span>
+            <span class="template-name">Bold Word</span>
+            <i class="ph-fill ph-check-circle template-check"></i>
+          </button>
+          <button class="template-swatch">
+            <span class="swatch-preview swatch-2">Aa</span>
+            <span class="template-name">Clean Line</span>
+          </button>
+          <button class="template-swatch">
+            <span class="swatch-preview swatch-3">Aa</span>
+            <span class="template-name">Highlight</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Social Defaults -->
+      <section class="card">
+        <h3 class="card-title"><i class="ph ph-hash"></i> Default Hashtags</h3>
+        <p class="card-sub">Suggested automatically on every AI summary. Editable per post.</p>
+
+        <div class="chip-row" id="hashtagRow">
+          <span class="chip">#wordsofwisdom <i class="ph ph-x chip-remove"></i></span>
+          <span class="chip">#lifeinthespirit <i class="ph ph-x chip-remove"></i></span>
+          <span class="chip">#lifeinthespiritseminar <i class="ph ph-x chip-remove"></i></span>
+        </div>
+
+        <div class="chip-input-row">
+          <input type="text" id="newHashtag" placeholder="Add a hashtag">
+          <button class="chip-add-btn" id="addHashtagBtn"><i class="ph-bold ph-plus"></i></button>
+        </div>
+      </section>
+
+      <!-- Giving Information -->
+      <section class="card">
+        <div class="toggle-row">
+          <div class="toggle-row-text">
+            <h3 class="card-title no-margin"><i class="ph ph-hand-heart"></i> Giving Information</h3>
+            <p class="card-sub">Off by default. Only appended when you explicitly enable it below.</p>
+          </div>
+          <button class="toggle" id="givingToggle" role="switch" aria-checked="false">
+            <span class="toggle-knob"></span>
+          </button>
+        </div>
+
+        <label class="field giving-field" id="givingField">
+          <span class="field-label">Giving Account</span>
+          <input type="text" value="FNB Account 62777808208" disabled>
+        </label>
+        <p class="giving-warning" id="givingWarning">
+          <i class="ph ph-warning-circle"></i> Giving details will not be included in generated posts while this is off.
+        </p>
+      </section>
+
+    </main>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav">
+      <button class="nav-item">
+        <i class="ph ph-house"></i>
+        <span>Home</span>
+      </button>
+      <button class="nav-item">
+        <i class="ph ph-scissors"></i>
+        <span>Editor</span>
+      </button>
+      <div class="nav-fab">
+        <i class="ph-bold ph-plus"></i>
+      </div>
+      <button class="nav-item">
+        <i class="ph ph-sparkle"></i>
+        <span>Clips</span>
+      </button>
+      <button class="nav-item active">
+        <i class="ph-fill ph-gear-six"></i>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <script>
+    // Giving Information toggle — mirrors PRD requirement:
+    // giving info is only ever appended when explicitly enabled.
+    const toggle = document.getElementById('givingToggle');
+    const givingField = document.getElementById('givingField');
+    const givingWarning = document.getElementById('givingWarning');
+    const givingInput = givingField.querySelector('input');
+
+    toggle.addEventListener('click', () => {
+      const isOn = toggle.getAttribute('aria-checked') === 'true';
+      toggle.setAttribute('aria-checked', String(!isOn));
+      toggle.classList.toggle('on', !isOn);
+      givingInput.disabled = isOn;
+      givingField.classList.toggle('dimmed', isOn);
+      givingWarning.style.display = isOn ? 'none' : 'flex';
+    });
+
+    // Caption template selection
+    document.querySelectorAll('.template-swatch').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.template-swatch').forEach(b => {
+          b.classList.remove('selected');
+          const check = b.querySelector('.template-check');
+          if (check) check.remove();
+        });
+        btn.classList.add('selected');
+        if (!btn.querySelector('.template-check')) {
+          const icon = document.createElement('i');
+          icon.className = 'ph-fill ph-check-circle template-check';
+          btn.appendChild(icon);
+        }
+      });
+    });
+
+    // Hashtag chips: add / remove
+    document.querySelectorAll('.chip-remove').forEach(x => {
+      x.addEventListener('click', (e) => e.target.closest('.chip').remove());
+    });
+    document.getElementById('addHashtagBtn').addEventListener('click', () => {
+      const input = document.getElementById('newHashtag');
+      const value = input.value.trim().replace(/^#?/, '#');
+      if (value.length > 1) {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.innerHTML = value + ' <i class="ph ph-x chip-remove"></i>';
+        chip.querySelector('.chip-remove').addEventListener('click', (e) => e.target.closest('.chip').remove());
+        document.getElementById('hashtagRow').appendChild(chip);
+        input.value = '';
+      }
+    });
+  </script>
+
+</body>
+</html>
