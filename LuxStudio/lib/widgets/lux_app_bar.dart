@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/lux_theme.dart';
+import '../theme/phosphor_icons.dart';
 import 'lux_icon_button.dart';
 
 /// The mockup's app bar: back arrow, title (optionally with a small
@@ -29,8 +30,9 @@ class LuxAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       leading: showBack
           ? LuxIconButton(
-              icon: Icons.arrow_back_ios_new_rounded,
-              iconSize: 18,
+              icon: PhosphorIcons.caretLeft,
+              variant: LuxIconButtonVariant.onSurface,
+              iconSize: 20,
               onPressed: () => Navigator.of(context).maybePop(),
             )
           : null,

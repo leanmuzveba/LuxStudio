@@ -9,6 +9,7 @@ class LuxCard extends StatelessWidget {
   final Color? borderColor;
   final Color? backgroundColor;
   final double borderWidth;
+  final double? radius;
   final VoidCallback? onTap;
 
   const LuxCard({
@@ -18,26 +19,28 @@ class LuxCard extends StatelessWidget {
     this.borderColor,
     this.backgroundColor,
     this.borderWidth = 1,
+    this.radius,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final borderRadius = BorderRadius.circular(radius ?? LuxRadii.card);
     final content = Container(
       padding: padding,
       decoration: BoxDecoration(
         color: backgroundColor ?? LuxColors.surface,
         border: Border.all(color: borderColor ?? LuxColors.border, width: borderWidth),
-        borderRadius: BorderRadius.circular(LuxRadii.card),
+        borderRadius: borderRadius,
       ),
       child: child,
     );
     if (onTap == null) return content;
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(LuxRadii.card),
+      borderRadius: borderRadius,
       child: InkWell(
-        borderRadius: BorderRadius.circular(LuxRadii.card),
+        borderRadius: borderRadius,
         onTap: onTap,
         child: content,
       ),

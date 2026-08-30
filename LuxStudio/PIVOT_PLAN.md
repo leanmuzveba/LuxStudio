@@ -54,8 +54,10 @@ Everything else Phase 6 originally listed was already done in Phase 5 (see above
 
 **Checkpoint**: working Flutter Web app talking to the real backend end-to-end, still old theme. `flutter build web` verified.
 
-### Phase 7 — Design system swap
-Retheme tokens/fonts/icons app-wide: `lib/theme/lux_theme.dart`, `pubspec.yaml` (+`phosphor_flutter`), `lib/widgets/*`, `lux_bottom_nav.dart`, `bottom_nav_scaffold.dart`.
+### Phase 7 — Design system swap — DONE
+Retheme tokens/fonts app-wide: `lib/theme/lux_theme.dart` (new palette, `GoogleFonts.inter` under the existing `sora`/`manrope` method names — a rename would've touched every screen, out of scope here), `lib/widgets/lux_card.dart` (new optional `radius` override for later per-screen reskins), `lux_icon_button.dart` (circular now, matching the kit), `lux_bottom_nav.dart`/`bottom_nav_scaffold.dart` (rebuilt: glass 96px bar, 40px top corners, raised gold FAB → `/import`; tab set is Home/Editor/Clips/Settings — Branding dropped as its own tab per plan, folded into Settings in Phase 13; Editor/Clips already tolerated a null `AppState.project` so no extra guard work was needed), `lux_app_bar.dart` (back-button icon).
+
+**`phosphor_flutter` 2.1.0 workaround**: the package's Dart API (`PhosphorIconsRegular` etc.) fails to compile on this Flutter SDK — `PhosphorIconData extends IconData`, and `IconData` is now a `final class`, with no newer package version published yet. `flutter analyze` did NOT catch this (only `flutter test`/`flutter build web` did) — worth remembering analyze alone isn't sufficient for a real compile check. Fix: kept `phosphor_flutter` as a pubspec dependency purely for its bundled font assets, and added `lib/theme/phosphor_icons.dart` — hand-picked icons as raw `IconData(codepoint, fontFamily: ..., fontPackage: 'phosphor_flutter')`, codepoints read from the installed package's own source. Extend that file (not the package's own classes) as later phases need more icons.
 
 ### Phase 8 — Reskin: Home
 `lib/screens/home_screen.dart`.

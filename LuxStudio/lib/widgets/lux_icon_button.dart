@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../theme/lux_theme.dart';
 
-/// The `.icon-btn` shape from the mockup: a 38×38 rounded-square (12px
-/// radius, not a circle despite the name of the CSS class it mirrors)
-/// tap target in one of four fills.
+/// The `.icon-btn` shape from the mockup: a circular tap target (e.g.
+/// `border-radius: 999px` / `rounded-full`) in one of four fills.
 enum LuxIconButtonVariant { standard, subtle, onSurface, filledGold }
 
 class LuxIconButton extends StatelessWidget {
@@ -46,9 +45,9 @@ class LuxIconButton extends StatelessWidget {
 
     final button = Material(
       color: bg,
-      borderRadius: BorderRadius.circular(LuxRadii.iconButton),
+      shape: const CircleBorder(),
       child: InkWell(
-        borderRadius: BorderRadius.circular(LuxRadii.iconButton),
+        customBorder: const CircleBorder(),
         onTap: onPressed,
         child: SizedBox(
           width: size,

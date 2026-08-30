@@ -1,49 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Design tokens for the LuxStudio UI (gold/dark "premium studio" look),
-/// extracted from the "LuxStudio App Mockups" design artifact.
+/// Design tokens for the LuxStudio UI, extracted from the church-branded
+/// `ui_kit/` reference (dark/gold, Inter, Phosphor icons) that replaced the
+/// earlier "LuxStudio App Mockups" artifact this theme originally matched.
 class LuxColors {
   LuxColors._();
 
-  static const background = Color(0xFF1A141A);
-  static const surface = Color(0xFF241D22);
-  static const surfaceRaised = Color(0xFF2E262B);
-  static const surfaceDashed = Color(0xFF1F181D);
-  static const border = Color(0xFF322A2F);
-  static const borderStrong = Color(0xFF3A2F35);
-  static const borderDashed = Color(0xFF4A3E44);
-  static const divider = Color(0xFF2A2226);
-  static const bottomNavBg = Color(0xFF1D1619);
-  static const playerSurface = Color(0xFF0F0C0F);
+  static const background = Color(0xFF1A1A1A);
 
-  static const textPrimary = Color(0xFFF5EFE6);
-  static const textSecondary = Color(0xFF8C7C74);
-  static const textMuted = Color(0xFF5A4C52);
-  static const textMutedAlt = Color(0xFF7A6C64);
-  static const iconSubtle = Color(0xFFB7A79C);
-  static const transcriptBody = Color(0xFFE9DFD3);
+  /// Approximates the mockup's glass-card recipe (`rgba(51,50,55,0.8)` +
+  /// 12px backdrop blur) as an opaque fill — a real blur-behind effect is
+  /// deferred to a later pass; this keeps every screen's cards/nav/sheets
+  /// readable and correctly toned without `BackdropFilter` everywhere.
+  static const surface = Color(0xFF333237);
+  static const surfaceRaised = Color(0xFF3D3C42);
+  static const surfaceDashed = Color(0xFF252525);
 
-  static const gold = Color(0xFFF4B315);
-  static const amber = Color(0xFFE59312);
-  static const tan = Color(0xFFD3AF85);
+  static const border = Color(0x4D6C4D15); // glass-border, rgba(108,77,21,.3)
+  static const borderStrong = Color(0xFF6C4D15); // icon-muted
+  static const borderDashed = Color(0x4D6C4D15);
+  static const divider = Color(0xFF333237);
+  static const bottomNavBg = Color(0xF0333237);
+  static const playerSurface = Color(0xFF000000);
+
+  static const textPrimary = Color(0xFFFFFFFF);
+  static const textSecondary = Color(0xFFD4B48C);
+  static const textMuted = Color(0xFF6C4D15);
+  static const textMutedAlt = Color(0x66D4B48C); // rgba(212,180,140,.4)
+  static const iconSubtle = Color(0xFFD4B48C);
+  static const transcriptBody = Color(0xFFD4B48C);
+
+  static const gold = Color(0xFFF4A823);
+  static const gold2 = Color(0xFFF5AE1F);
+  static const amber = Color(0xFFF5AE1F);
+  static const tan = Color(0xFFD4B48C);
   static const bronze = Color(0xFF8E5915);
-  static const slate = Color(0xFF423738);
+  static const slate = Color(0xFF333237);
   static const success = Color(0xFF6FBF73);
   static const error = Color(0xFFFF5C5C);
 
-  static const avatarGradient = LinearGradient(
+  static const goldGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [gold, bronze],
+    colors: [gold, gold2],
   );
+
+  static const avatarGradient = goldGradient;
 }
 
 class LuxRadii {
   LuxRadii._();
-  static const card = 16.0;
-  static const dashedCard = 18.0;
-  static const button = 14.0;
+  static const card = 20.0;
+  static const dashedCard = 24.0;
+  static const button = 16.0;
   static const iconButton = 12.0;
   static const pill = 100.0;
 }
@@ -57,9 +67,11 @@ class LuxSpacing {
   static const xl = 24.0;
 }
 
-/// Sora (display/headings) + Manrope (body/UI) via Google Fonts, matching
-/// the mockup exactly — fetched once and cached by the package, same
-/// network assumption the app already makes for Gemini.
+/// [sora]/[manrope] now both render Inter (the ui_kit's one font family,
+/// 400-900 weights) — kept as two named methods rather than renamed, since
+/// dozens of call sites across every screen use them and a rename is out
+/// of scope for a token-only pass; each screen's own reskin phase can
+/// simplify to a single method as it's rewritten anyway.
 class LuxText {
   LuxText._();
 
@@ -70,7 +82,7 @@ class LuxText {
     double? letterSpacing,
     double? height,
   }) =>
-      GoogleFonts.sora(
+      GoogleFonts.inter(
         fontSize: size,
         fontWeight: weight,
         color: color,
@@ -85,7 +97,7 @@ class LuxText {
     double? letterSpacing,
     double? height,
   }) =>
-      GoogleFonts.manrope(
+      GoogleFonts.inter(
         fontSize: size,
         fontWeight: weight,
         color: color,
@@ -99,7 +111,7 @@ class LuxTheme {
 
   static ThemeData get dark {
     final base = ThemeData.dark(useMaterial3: true);
-    final textTheme = GoogleFonts.manropeTextTheme(base.textTheme).apply(
+    final textTheme = GoogleFonts.interTextTheme(base.textTheme).apply(
       bodyColor: LuxColors.textPrimary,
       displayColor: LuxColors.textPrimary,
     );
@@ -119,7 +131,7 @@ class LuxTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.manrope(
+        titleTextStyle: GoogleFonts.inter(
           fontSize: 17,
           fontWeight: FontWeight.w700,
           color: LuxColors.textPrimary,
