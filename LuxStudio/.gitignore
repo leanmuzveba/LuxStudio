@@ -31,10 +31,9 @@ migrate_working_dir/
 /build/
 
 # Platform folders are tracked — we hand-edit AndroidManifest.xml/build.gradle.kts
-# (permissions, minSdkVersion, codec build variant) so they must survive a fresh clone.
+# and web/index.html/manifest.json, so they must survive a fresh clone.
 # Only iOS/desktop targets we don't build for stay ignored.
 /ios/
-/web/
 /macos/
 /linux/
 /windows/
