@@ -28,11 +28,11 @@ class BrandSettingsStore {
     try {
       final prefs = await _preferencesProvider();
       final raw = prefs.getString(_key);
-      if (raw == null) return BrandSettings.empty;
+      if (raw == null) return BrandSettings.seeded;
       final json = jsonDecode(raw) as Map<String, dynamic>;
       return BrandSettings.fromJson(json);
     } catch (_) {
-      return BrandSettings.empty;
+      return BrandSettings.seeded;
     }
   }
 

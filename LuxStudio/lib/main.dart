@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'screens/ai_clips_screen.dart';
 import 'screens/analyse_screen.dart';
-import 'screens/branding_screen.dart';
 import 'screens/import_screen.dart';
 import 'screens/share_screen.dart';
 import 'screens/video_editor_screen.dart';
@@ -70,7 +69,6 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
           AppRoutes.editor: (_) => const VideoEditorScreen(),
           AppRoutes.clips: (_) => const AiClipsScreen(),
           AppRoutes.share: (_) => const ShareScreen(),
-          AppRoutes.branding: (_) => const BrandingScreen(),
         },
       ),
     );
@@ -90,8 +88,9 @@ class _SplashScreen extends StatelessWidget {
   }
 }
 
-/// Route names for the pushed (non-tab) screens. Home/Branding/Settings
-/// tabs live inside [BottomNavScaffold], set as `home` above.
+/// Route names for the pushed (non-tab) screens. Home/Editor/Clips/
+/// Settings tabs live inside [BottomNavScaffold], set as `home` above —
+/// Branding is no longer its own screen/tab, folded into Settings.
 class AppRoutes {
   AppRoutes._();
   static const import = '/import';
@@ -99,7 +98,6 @@ class AppRoutes {
   static const editor = '/editor';
   static const clips = '/clips';
   static const share = '/share';
-  static const branding = '/branding';
 }
 
 /// Makes the single [AppState] instance available to the whole widget

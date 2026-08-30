@@ -58,7 +58,7 @@ class AppState extends ChangeNotifier {
   /// Global branding (logo + org name) — set in the Settings screen,
   /// applied across exports when enabled. Refresh with
   /// [reloadBrandSettings] after the user edits it there.
-  BrandSettings brandSettings = BrandSettings.empty;
+  BrandSettings brandSettings = BrandSettings.seeded;
 
   final List<TranscriptSegment> transcript = [];
   final List<AiClip> suggestedClips = [];
