@@ -6,6 +6,7 @@ import '../main.dart';
 import '../models/ai_clip.dart';
 import '../state/app_state.dart';
 import '../theme/lux_theme.dart';
+import '../utils/error_presenter.dart';
 import '../widgets/lux_icon_button.dart';
 
 enum _Platform { reels, tiktok, shorts, story }
@@ -222,7 +223,7 @@ class _ShareScreenState extends State<ShareScreen> {
         children: [
           if (appState.exportError != null) ...[
             Text(
-              appState.exportError!,
+              friendlyError(appState.exportError),
               textAlign: TextAlign.center,
               style: LuxText.manrope(size: 12, color: LuxColors.error),
             ),

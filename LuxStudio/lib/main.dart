@@ -62,6 +62,20 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
         title: 'LuxStudio',
         debugShowCheckedModeBanner: false,
         theme: LuxTheme.dark,
+        // The ui_kit mockups are built as a "phone shell" — max-width 430px,
+        // centered, degrading gracefully to wider viewports (see
+        // ui_kit/*/styles.css's `.app { max-width: 430px; margin: 0 auto; }`
+        // and CLAUDE.md's platform-decision note). Mirror that here so the
+        // browser/desktop build doesn't stretch phone-sized UI full-width.
+        builder: (context, child) => ColoredBox(
+          color: LuxColors.background,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 430),
+              child: child,
+            ),
+          ),
+        ),
         home: !_checkedRecovery ? const _SplashScreen() : const BottomNavScaffold(),
         routes: {
           AppRoutes.import: (_) => ImportScreen(mediaImportService: mediaImportService),

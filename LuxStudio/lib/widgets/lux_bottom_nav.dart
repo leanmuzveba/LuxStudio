@@ -36,33 +36,43 @@ class LuxBottomNav extends StatelessWidget {
     final left = items.take(half).toList();
     final right = items.skip(half).toList();
 
-    return Container(
-      height: 96 + bottomInset,
-      padding: EdgeInsets.only(bottom: bottomInset),
-      decoration: const BoxDecoration(
-        color: LuxColors.bottomNavBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-        border: Border(top: BorderSide(color: LuxColors.border)),
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                for (var i = 0; i < left.length; i++) _buildItem(left[i], i),
-                const SizedBox(width: 56),
-                for (var i = 0; i < right.length; i++) _buildItem(right[i], half + i),
-              ],
+    // The FAB is raised 24px above the bar, so it must live outside the
+    // bar's own ClipRRect (which would otherwise slice off its top) — the
+    // Stack below reserves that extra 24px as unclipped space and only
+    // clips the bar itself, positioned at the bottom of the Stack.
+    return SizedBox(
+      height: 96 + bottomInset + 24,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              height: 96 + bottomInset,
+              padding: EdgeInsets.only(bottom: bottomInset),
+              decoration: const BoxDecoration(
+                color: LuxColors.bottomNavBg,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+                border: Border(top: BorderSide(color: LuxColors.border)),
+              ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    for (var i = 0; i < left.length; i++) _buildItem(left[i], i),
+                    const SizedBox(width: 56),
+                    for (var i = 0; i < right.length; i++) _buildItem(right[i], half + i),
+                  ],
+                ),
+              ),
             ),
-            Positioned(
-              top: -24,
-              child: _Fab(onTap: onFabTap),
-            ),
-          ],
-        ),
+          ),
+          _Fab(onTap: onFabTap),
+        ],
       ),
     );
   }

@@ -4,6 +4,7 @@ import '../main.dart';
 import '../models/ai_clip.dart';
 import '../state/app_state.dart';
 import '../theme/lux_theme.dart';
+import '../utils/error_presenter.dart';
 import '../widgets/lux_icon_button.dart';
 
 /// Screen 3 — AI Clip Finder. Matches `ui_kit/clips/index.html`: a
@@ -162,7 +163,7 @@ class _EmptyState extends StatelessWidget {
             ),
             if (error != null) ...[
               const SizedBox(height: 8),
-              Text(error!, textAlign: TextAlign.center, style: LuxText.manrope(size: 12, color: LuxColors.error)),
+              Text(friendlyError(error), textAlign: TextAlign.center, style: LuxText.manrope(size: 12, color: LuxColors.error)),
             ],
           ],
         ),

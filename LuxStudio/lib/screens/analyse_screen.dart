@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../state/app_state.dart';
 import '../theme/lux_theme.dart';
+import '../utils/error_presenter.dart';
 import '../widgets/lux_icon_button.dart';
 
 /// The four stages the backend's automatic `/analyse` pipeline reports
@@ -216,7 +217,7 @@ class _StatusCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             isError
-                ? (error ?? 'Something went wrong — please try again.')
+                ? friendlyError(error)
                 : 'Our AI is extracting the most powerful moments for you.',
             textAlign: TextAlign.center,
             style: LuxText.manrope(size: 13, color: LuxColors.textSecondary),

@@ -254,7 +254,7 @@ class _NewSermonCta extends StatelessWidget {
         onTap: onTap,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
           decoration: BoxDecoration(
             gradient: LuxColors.goldGradient,
             borderRadius: BorderRadius.circular(32),
@@ -262,19 +262,24 @@ class _NewSermonCta extends StatelessWidget {
               BoxShadow(color: Color(0x80000000), blurRadius: 50, offset: Offset(0, 25)),
             ],
           ),
-          child: Column(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 64,
-                height: 64,
+                width: 36,
+                height: 36,
                 decoration: const BoxDecoration(color: Color(0x1A000000), shape: BoxShape.circle),
                 alignment: Alignment.center,
-                child: const Icon(Icons.add_rounded, size: 30, color: LuxColors.background),
+                child: const Icon(Icons.add_rounded, size: 20, color: LuxColors.background),
               ),
-              const SizedBox(height: 16),
-              Text(
-                'New Sermon Project',
-                style: LuxText.sora(size: 20, weight: FontWeight.w700, color: LuxColors.background),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  'New Sermon Project',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: LuxText.sora(size: 17, weight: FontWeight.w700, color: LuxColors.background),
+                ),
               ),
             ],
           ),
