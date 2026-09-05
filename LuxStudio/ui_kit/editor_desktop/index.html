@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuxStudio — Video Editor (Desktop / Web)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Design tokens pulled from LuxStudio's real theme (lib/theme/lux_theme.dart /
+     CLAUDE.md), not from any prior mockup's palette:
+     background #1A1A1A · glass card rgba(51,50,55,.8) · glass border rgba(108,77,21,.3)
+     · gold gradient #F4A823 → #F5AE1F · tan body text #D4B48C · bronze #8E5915 */
+  :root{
+    --bg-app: #1A1A1A;
+    --bg-panel: #1A1A1A;
+    --bg-header: #1A1A1A;
+    --bg-card: rgba(51,50,55,0.8);
+    --bg-card-inner: #3D3C42;
+    --bg-elevated: #333237;
+    --border: rgba(108,77,21,0.3);
+    --border-soft: rgba(108,77,21,0.18);
+    --gold: #F4A823;
+    --gold-bright: #F5AE1F;
+    --gold-dim: #D4B48C;
+    --on-gold: #1A1A1A;
+    --text-primary: #FFFFFF;
+    --text-secondary: #D4B48C;
+    --text-muted: rgba(212,180,140,0.45);
+    --success: #6FBF73;
+    --radius-lg: 10px;
+    --radius-md: 8px;
+    --radius-sm: 6px;
+    font-size: 14px;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{
+    margin:0;
+    height:100%;
+    background: var(--bg-app);
+    color: var(--text-primary);
+    font-family: "Inter","Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button{ font-family: inherit; }
+
+  .app{
+    display:flex;
+    height:100vh;
+    overflow:hidden;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:234px;
+    flex-shrink:0;
+    background: var(--bg-panel);
+    border-right:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    padding:20px 16px;
+  }
+
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:0 8px 24px 8px;
+  }
+  .brand-mark{
+    width:28px;
+    height:28px;
+    border-radius:6px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .brand-mark img{ width:28px; height:28px; display:block; }
+  .brand-name{ font-size:16px; font-weight:700; letter-spacing:0.2px; }
+  .brand-name .accent{ color: var(--gold); }
+
+  .nav{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .nav-item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:11px 12px;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    text-decoration:none;
+    font-weight:500;
+    cursor:pointer;
+    border:none;
+    background:transparent;
+    width:100%;
+    text-align:left;
+    font-size:14.5px;
+    transition: background .15s ease, color .15s ease;
+  }
+  .nav-item svg{ width:18px; height:18px; flex-shrink:0; opacity:0.9; }
+  .nav-item:hover{ background: rgba(108,77,21,0.10); color: var(--text-primary); }
+  .nav-item.active{
+    background: rgba(244,168,35,0.14);
+    color: var(--text-primary);
+  }
+  .nav-item.active svg{ color: var(--gold); stroke: var(--gold); opacity:1; }
+  .nav-item.active{ font-weight:600; }
+
+  .sidebar-spacer{ flex:1; }
+
+  .sidebar-bottom{
+    border-top:1px solid var(--border);
+    padding-top:16px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .nav-item.settings{ padding:11px 12px; }
+
+  .project-card{
+    border:1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding:12px 14px;
+    background: var(--bg-card);
+  }
+  .project-card-label{
+    font-size:10.5px;
+    letter-spacing:0.6px;
+    color: var(--text-muted);
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  .project-card-name{
+    font-size:13.5px;
+    font-weight:600;
+    color: var(--text-primary);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    margin-bottom:10px;
+  }
+  .progress-track{
+    height:5px;
+    border-radius:4px;
+    background: rgba(108,77,21,0.25);
+    overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;
+    width:38%;
+    border-radius:4px;
+    background: linear-gradient(90deg,var(--gold),var(--gold-bright));
+  }
+
+  /* ---------- Header ---------- */
+  .main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+  }
+  .header{
+    height:60px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 24px;
+    background: var(--bg-header);
+    border-bottom:1px solid var(--border);
+  }
+  .header-left{ display:flex; align-items:center; gap:12px; }
+  .header-title{ font-size:15.5px; font-weight:700; }
+  .badge-draft{
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:0.5px;
+    color: var(--gold-bright);
+    border:1px solid rgba(244,168,35,0.55);
+    background: rgba(244,168,35,0.08);
+    padding:3px 8px;
+    border-radius:5px;
+  }
+  .header-right{ display:flex; align-items:center; gap:10px; }
+
+  .btn{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    font-size:13.5px;
+    font-weight:600;
+    padding:9px 16px;
+    border-radius: var(--radius-md);
+    cursor:pointer;
+    border:1px solid transparent;
+    transition: transform .08s ease, filter .12s ease, background .12s ease;
+  }
+  .btn svg{ width:15px; height:15px; }
+  .btn:active{ transform: translateY(1px); }
+
+  .btn-outline{
+    background: var(--bg-elevated);
+    border-color: rgba(244,168,35,0.45);
+    color: var(--gold-bright);
+  }
+  .btn-outline:hover{ background: rgba(244,168,35,0.10); }
+
+  .btn-solid{
+    background: linear-gradient(180deg,var(--gold-bright),var(--gold));
+    color: var(--on-gold);
+  }
+  .btn-solid:hover{ filter: brightness(1.06); }
+
+  /* ---------- Body layout ---------- */
+  .body{
+    flex:1;
+    display:flex;
+    min-height:0;
+  }
+
+  /* Tool rail */
+  .tool-rail{
+    width:56px;
+    flex-shrink:0;
+    background: var(--bg-panel);
+    border-right:1px solid var(--border-soft);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:14px 0;
+    gap:8px;
+  }
+  .tool-btn{
+    width:34px;
+    height:34px;
+    border-radius: var(--radius-sm);
+    border:none;
+    background:transparent;
+    color: var(--text-secondary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+  }
+  .tool-btn svg{ width:17px; height:17px; }
+  .tool-btn:hover{ background: rgba(108,77,21,0.14); color:var(--text-primary); }
+  .tool-btn.active{ background: rgba(244,168,35,0.18); color: var(--gold-bright); }
+
+  /* Editor column: preview + timeline */
+  .editor-col{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    padding:22px 24px;
+    gap:16px;
+    overflow:hidden;
+  }
+
+  .preview-wrap{
+    flex:1;
+    min-height:0;
+    display:flex;
+  }
+  .preview{
+    flex:1;
+    border:1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: radial-gradient(120% 140% at 50% 0%, var(--bg-card-inner) 0%, #241f22 55%, var(--bg-app) 100%);
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-end;
+    position:relative;
+    overflow:hidden;
+  }
+  .preview-center{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    pointer-events:none;
+  }
+  .preview-watermark{
+    font-size:56px;
+    font-weight:800;
+    letter-spacing:4px;
+    color: rgba(255,255,255,0.09);
+  }
+  .preview-subtitle{
+    font-size:14.5px;
+    font-style:italic;
+    color: var(--text-secondary);
+    opacity:0.85;
+  }
+  .preview-cursor{
+    position:absolute;
+    top:58%;
+    left:49%;
+    width:16px;
+    height:16px;
+    opacity:0.7;
+    pointer-events:none;
+  }
+
+  .preview-controls{
+    position:relative;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:14px 20px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.35), rgba(0,0,0,0));
+  }
+  .ctrl-btn{
+    background:none;
+    border:none;
+    color: var(--text-primary);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .ctrl-btn svg{ width:17px; height:17px; }
+  .play-btn{
+    width:38px;
+    height:38px;
+    border-radius:50%;
+    background: linear-gradient(180deg,var(--gold-bright),var(--gold));
+    color: var(--on-gold);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:none;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .play-btn svg{ width:16px; height:16px; }
+  .play-btn svg.pause{ display:none; }
+  .play-btn.playing svg.play{ display:none; }
+  .play-btn.playing svg.pause{ display:block; }
+
+  .timecode{
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size:13px;
+    letter-spacing:0.3px;
+    color: var(--text-primary);
+    border:1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding:7px 12px;
+    background: rgba(0,0,0,0.25);
+  }
+
+  .volume-group{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-left:auto;
+  }
+  .volume-track{
+    width:90px;
+    height:4px;
+    border-radius:3px;
+    background: rgba(108,77,21,0.4);
+    position:relative;
+    cursor:pointer;
+  }
+  .volume-fill{
+    position:absolute;
+    inset:0;
+    width:70%;
+    border-radius:3px;
+    background: var(--gold);
+  }
+  .volume-fill::after{
+    content:"";
+    position:absolute;
+    right:-4px;
+    top:50%;
+    transform:translateY(-50%);
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    background: var(--gold-bright);
+  }
+
+  /* Timeline */
+  .timeline{
+    flex-shrink:0;
+    height:225px;
+    border:1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-panel);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .timeline-ruler{
+    display:flex;
+    align-items:center;
+    gap:22px;
+    padding:0 16px;
+    height:32px;
+    flex-shrink:0;
+    border-bottom:1px solid var(--border-soft);
+    font-size:11.5px;
+    color: var(--text-muted);
+  }
+  .timeline-ruler .label{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-weight:700;
+    color: var(--text-primary);
+    font-size:12.5px;
+    margin-right:8px;
+  }
+  .timeline-ruler .label svg{ width:13px; height:13px; color: var(--gold); }
+  .tick{ cursor:default; }
+  .tick.active{ color: var(--gold-bright); font-weight:700; }
+  .ruler-spacer{ flex:1; }
+  .zoom-group{ display:flex; align-items:center; gap:8px; }
+  .zoom-btn{
+    width:20px; height:20px;
+    display:flex; align-items:center; justify-content:center;
+    color: var(--text-secondary);
+    background:none; border:none; cursor:pointer;
+  }
+  .zoom-btn svg{ width:15px; height:15px; }
+  .zoom-slider{
+    width:90px; height:4px;
+    border-radius:3px;
+    background: rgba(108,77,21,0.35);
+    position:relative;
+  }
+  .zoom-slider-fill{
+    position:absolute; inset:0;
+    width:60%;
+    border-radius:3px;
+    background: var(--gold);
+  }
+  .zoom-slider-fill::after{
+    content:"";
+    position:absolute; right:-5px; top:50%; transform:translateY(-50%);
+    width:11px;height:11px;border-radius:50%;
+    background: var(--text-primary);
+  }
+
+  .tracks{
+    flex:1;
+    position:relative;
+    overflow:auto;
+  }
+  .playhead{
+    position:absolute;
+    top:0;
+    bottom:0;
+    left:225px;
+    width:2px;
+    background: var(--gold-bright);
+    z-index:5;
+    cursor:ew-resize;
+  }
+  .playhead::before{
+    content:"";
+    position:absolute;
+    top:-2px;
+    left:50%;
+    transform:translateX(-50%);
+    width:11px;
+    height:11px;
+    border-radius:50%;
+    background: var(--gold-bright);
+  }
+
+  .track-row{
+    display:flex;
+    height:56px;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .track-label{
+    width:120px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:0 14px;
+    font-size:11.5px;
+    font-weight:700;
+    letter-spacing:0.3px;
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
+    border-right:1px solid var(--border-soft);
+  }
+  .track-label svg{ width:14px; height:14px; opacity:0.8; }
+  .track-lane{
+    flex:1;
+    position:relative;
+    background-image: linear-gradient(90deg, var(--border-soft) 1px, transparent 1px);
+    background-size: 105px 100%;
+  }
+
+  .clip{
+    position:absolute;
+    top:6px;
+    bottom:6px;
+    border-radius: var(--radius-sm);
+    display:flex;
+    align-items:center;
+    padding:0 10px;
+    font-size:12px;
+    font-weight:600;
+    color: var(--on-gold);
+    overflow:hidden;
+    white-space:nowrap;
+    cursor:grab;
+    border:1px solid rgba(0,0,0,0.15);
+  }
+  .clip.video-a{ left:8px; width:390px; background: linear-gradient(90deg,#8E5915,#F4A823); color: var(--text-primary); }
+  .clip.video-b{ left:405px; width:445px; background: linear-gradient(90deg,#F4A823,#F5AE1F); }
+  .clip.gap-divider{ position:absolute; top:0; bottom:0; width:2px; background: var(--gold-bright); opacity:.6; }
+
+  .sub-chip{
+    position:absolute;
+    top:16px;
+    height:26px;
+    display:flex;
+    align-items:center;
+    padding:0 10px;
+    border:1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card-inner);
+    font-size:11.5px;
+    font-weight:600;
+    color: var(--text-primary);
+    white-space:nowrap;
+  }
+
+  /* ---------- Right panel ---------- */
+  .insights{
+    width:280px;
+    flex-shrink:0;
+    background: var(--bg-panel);
+    border-left:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  .insights-header{
+    padding:18px 20px 14px 20px;
+    border-bottom:1px solid var(--border-soft);
+    flex-shrink:0;
+  }
+  .insights-title-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:8px;
+  }
+  .insights-title{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:14.5px;
+    font-weight:700;
+  }
+  .insights-title svg{ width:16px; height:16px; color: var(--gold); }
+  .rescan-btn{
+    background:none;
+    border:none;
+    color: var(--gold-bright);
+    font-size:12.5px;
+    font-weight:700;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:5px;
+  }
+  .rescan-btn svg{ width:12px; height:12px; transition: transform .5s ease; }
+  .rescan-btn.spinning svg{ transform: rotate(360deg); }
+  .insights-desc{
+    font-size:12.5px;
+    line-height:1.5;
+    color: var(--text-muted);
+  }
+
+  .clip-list{
+    flex:1;
+    overflow-y:auto;
+    padding:16px 16px 24px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .clip-card{
+    border:1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow:hidden;
+    background: var(--bg-card);
+    transition: border-color .15s ease;
+  }
+  .clip-card:hover{ border-color: rgba(244,168,35,0.4); }
+  .clip-thumb{
+    position:relative;
+    height:112px;
+    background: linear-gradient(160deg,var(--bg-card-inner),var(--bg-app));
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .clip-thumb .seg-id{
+    font-size:30px;
+    font-weight:800;
+    color: rgba(255,255,255,0.14);
+    letter-spacing:1px;
+  }
+  .tag{
+    position:absolute;
+    top:8px;
+    left:8px;
+    font-size:9.5px;
+    font-weight:800;
+    letter-spacing:0.4px;
+    padding:3px 7px;
+    border-radius:4px;
+  }
+  .tag.viral{ background: var(--gold); color: var(--on-gold); }
+  .tag.hook{ background:transparent; color: var(--gold-dim); }
+  .tag.cta{ background:transparent; color: var(--gold-bright); }
+  .tag.plain{ background:transparent; color: var(--text-muted); }
+
+  .duration-pill{
+    position:absolute;
+    bottom:8px;
+    right:8px;
+    background: rgba(0,0,0,0.75);
+    color: var(--text-primary);
+    font-size:11px;
+    font-weight:700;
+    padding:2px 7px;
+    border-radius:4px;
+  }
+  .clip-body{ padding:12px 14px 14px 14px; }
+  .clip-title{ font-size:13.5px; font-weight:700; margin-bottom:5px; }
+  .clip-quote{
+    font-size:12px;
+    font-style:italic;
+    color: var(--text-secondary);
+    line-height:1.4;
+    margin-bottom:10px;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .clip-footer{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .clip-time{
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size:11px;
+    color: var(--gold-dim);
+  }
+  .add-clip-btn{
+    background: var(--bg-card-inner);
+    color: var(--text-primary);
+    border:1px solid var(--border);
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:0.3px;
+    padding:6px 10px;
+    border-radius: var(--radius-sm);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .add-clip-btn:hover{ background: rgba(244,168,35,0.15); border-color: rgba(244,168,35,0.4); }
+  .add-clip-btn.added{ background: rgba(111,191,115,0.18); color:#DCEFDD; border-color: rgba(111,191,115,0.4); }
+
+  ::-webkit-scrollbar{ width:9px; height:9px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background: rgba(108,77,21,0.35); border-radius:5px; }
+  ::-webkit-scrollbar-thumb:hover{ background: rgba(108,77,21,0.5); }
+
+  .placeholder-view{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color: var(--text-muted);
+    font-size:14px;
+    flex-direction:column;
+    gap:8px;
+  }
+  .placeholder-view svg{ width:40px; height:40px; opacity:0.35; margin-bottom:6px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <img src="icon.png" alt="LuxStudio logo">
+      </div>
+      <div class="brand-name">Lux<span class="accent">Studio</span></div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item active" data-view="editor">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M22 8.5l-6 3.5 6 3.5v-7z"/></svg>
+        Editor
+      </button>
+      <button class="nav-item" data-view="media">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        Media Library
+      </button>
+      <button class="nav-item" data-view="highlights">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2m0 20v-2M8 9h2M20 9h2M17.8 11.8L19 13M15 9h0M17.8 6.2L19 5M3 21l9-9M12.2 6.2L11 5"/></svg>
+        AI Highlights
+      </button>
+      <button class="nav-item" data-view="subtitles">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        Subtitles
+      </button>
+      <button class="nav-item" data-view="exports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Exports
+      </button>
+    </nav>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-bottom">
+      <button class="nav-item settings" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019 9c.24.31.4.68.46 1.07"/></svg>
+        Settings
+      </button>
+
+      <div class="project-card">
+        <div class="project-card-label">CURRENT PROJECT</div>
+        <div class="project-card-name">Sunday Sermon - Grace Community</div>
+        <div class="progress-track"><div class="progress-fill"></div></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="header">
+      <div class="header-left">
+        <div class="header-title">Sunday Sermon - Grace Community</div>
+        <div class="badge-draft">DRAFT</div>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-outline" id="cloudSaveBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 16.58A5 5 0 0018 7h-1.26A8 8 0 104 15.25"/></svg>
+          Cloud Save
+        </button>
+        <button class="btn btn-solid" id="exportBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--on-gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l4 4h-3v8h-2V6H8l4-4z"/><path d="M20 15v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5"/></svg>
+          Export
+        </button>
+      </div>
+    </header>
+
+    <div class="body">
+      <!-- Tool rail -->
+      <div class="tool-rail">
+        <button class="tool-btn active" data-tool="select" title="Select">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+        </button>
+        <button class="tool-btn" data-tool="cut" title="Cut">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+        </button>
+        <button class="tool-btn" data-tool="crop" title="Crop / Select region">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 3"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+        </button>
+        <button class="tool-btn" data-tool="pan" title="Pan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 00-4 0v5M14 10V4a2 2 0 00-4 0v7M10 10.5V6a2 2 0 00-4 0v8"/><path d="M6 14a8 8 0 008 8h1a6 6 0 006-6v-2a2 2 0 00-4 0"/></svg>
+        </button>
+      </div>
+
+      <!-- Editor column -->
+      <section class="editor-col" id="editorView">
+        <div class="preview-wrap">
+          <div class="preview">
+            <div class="preview-center">
+              <div class="preview-watermark">LUX</div>
+              <div class="preview-subtitle">Video Preview: Sermon Feed Primary</div>
+            </div>
+            <svg class="preview-cursor" viewBox="0 0 24 24" fill="#fff"><path d="M4 2l14 8-6 1.5L9 18 4 2z"/></svg>
+            <div class="preview-controls">
+              <button class="ctrl-btn" id="prevBtn" title="Previous clip">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14l-9-7z"/></svg>
+              </button>
+              <button class="play-btn" id="playBtn" title="Play/Pause">
+                <svg class="play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                <svg class="pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+              </button>
+              <button class="ctrl-btn" id="nextBtn" title="Next clip">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l9-7z"/></svg>
+              </button>
+              <div class="timecode" id="timecode">00:14:22:15 / 00:45:00:00</div>
+              <div class="volume-group">
+                <button class="ctrl-btn" id="muteBtn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 010 7"/></svg>
+                </button>
+                <div class="volume-track" id="volumeTrack"><div class="volume-fill" id="volumeFill"></div></div>
+              </div>
+              <button class="ctrl-btn" id="fullscreenBtn" title="Fullscreen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline">
+          <div class="timeline-ruler">
+            <div class="label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 8 12 12 15 14"/></svg>
+              Timeline
+            </div>
+            <span class="tick">00:00</span>
+            <span class="tick">05:00</span>
+            <span class="tick">10:00</span>
+            <span class="tick active">15:00</span>
+            <span class="tick">20:00</span>
+            <span class="tick">25:00</span>
+            <div class="ruler-spacer"></div>
+            <div class="zoom-group">
+              <button class="zoom-btn" id="zoomOutBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+              </button>
+              <div class="zoom-slider" id="zoomSlider"><div class="zoom-slider-fill" id="zoomFill"></div></div>
+              <button class="zoom-btn" id="zoomInBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="tracks" id="tracks">
+            <div class="playhead" id="playhead"></div>
+
+            <div class="track-row">
+              <div class="track-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M22 8.5l-6 3.5 6 3.5v-7z"/></svg>
+                VIDEO 1
+              </div>
+              <div class="track-lane">
+                <div class="clip video-a" draggable="true">Sermon_Intro_Master.mp4</div>
+                <div class="clip video-b" draggable="true">Pastor_Mark_Main_Feed.mp4</div>
+              </div>
+            </div>
+
+            <div class="track-row">
+              <div class="track-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19 12a7 7 0 00-2.5-5.36M15.5 9.5a3 3 0 010 5"/></svg>
+                AUDIO 1
+              </div>
+              <div class="track-lane"></div>
+            </div>
+
+            <div class="track-row">
+              <div class="track-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><line x1="7" y1="11" x2="12" y2="11"/></svg>
+                SUBS
+              </div>
+              <div class="track-lane">
+                <div class="sub-chip" style="left:270px;">"Grace is found..."</div>
+                <div class="sub-chip" style="left:398px;">"...in every heart."</div>
+              </div>
+            </div>
+
+            <div class="track-row" style="border-bottom:none;">
+              <div class="track-label" style="background:transparent;border-right:none;"></div>
+              <div class="track-lane"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Placeholder views for other nav tabs -->
+      <section class="editor-col placeholder-view" id="mediaView" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        Media Library
+      </section>
+      <section class="editor-col placeholder-view" id="highlightsView" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 4V2m0 20v-2M8 9h2M20 9h2M17.8 11.8L19 13M15 9h0M17.8 6.2L19 5M3 21l9-9M12.2 6.2L11 5"/></svg>
+        AI Highlights
+      </section>
+      <section class="editor-col placeholder-view" id="subtitlesView" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        Subtitles
+      </section>
+      <section class="editor-col placeholder-view" id="exportsView" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Exports
+      </section>
+      <section class="editor-col placeholder-view" id="settingsView" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019 9c.24.31.4.68.46 1.07"/></svg>
+        Settings
+      </section>
+
+      <!-- Right panel -->
+      <aside class="insights">
+        <div class="insights-header">
+          <div class="insights-title-row">
+            <div class="insights-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.9L19 9.5l-4.9 1.8L12 16l-1.8-4.9L5 9.5l4.9-1.8L12 3z"/></svg>
+              AI Clip Insights
+            </div>
+            <button class="rescan-btn" id="rescanBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+              Re-scan
+            </button>
+          </div>
+          <div class="insights-desc">We've identified 12 viral-ready segments for TikTok, Instagram Reels, and YouTube Shorts.</div>
+        </div>
+
+        <div class="clip-list" id="clipList">
+          <!-- rendered by JS -->
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+
+  const clips = [
+    { id:'S1', tag:'HIGH VIRAL POTENTIAL', tagClass:'viral', duration:'00:58',
+      title:'The Power of Community',
+      quote:'"When we gather together, the spirit moves in ways we cannot imagine alone..."',
+      range:'04:22 - 05:20' },
+    { id:'S2', tag:'EMOTIONAL HOOK', tagClass:'hook', duration:'00:42',
+      title:'Finding Your Purpose',
+      quote:'"Your calling isn\'t a destination, it\'s the walk you take every single morning..."',
+      range:'12:15 - 12:57' },
+    { id:'S3', tag:'CALL TO ACTION', tagClass:'cta', duration:'01:15',
+      title:'Closing Prayer Section',
+      quote:'"Let us bow our heads and remember the grace that was given to us this week..."',
+      range:'43:20 - 44:35' },
+    { id:'S4', tag:'', tagClass:'plain', duration:'00:30',
+      title:'Worship Highlight 01',
+      quote:'The transition between the second verse and the chorus shows great energy.',
+      range:'08:45 - 09:15' },
+    { id:'S5', tag:'EMOTIONAL HOOK', tagClass:'hook', duration:'00:51',
+      title:'A Story of Redemption',
+      quote:'"I was lost for years, and it was this community that walked beside me back home..."',
+      range:'19:02 - 19:53' },
+    { id:'S6', tag:'HIGH VIRAL POTENTIAL', tagClass:'viral', duration:'00:37',
+      title:'One Line That Stuck',
+      quote:'"Faith isn\'t the absence of doubt, it\'s showing up again anyway..."',
+      range:'27:44 - 28:21' },
+  ];
+
+  const listEl = document.getElementById('clipList');
+  listEl.innerHTML = clips.map(c => `
+    <div class="clip-card" data-id="${c.id}">
+      <div class="clip-thumb">
+        <span class="seg-id">${c.id}</span>
+        ${c.tag ? `<div class="tag ${c.tagClass}">${c.tag}</div>` : ''}
+        <div class="duration-pill">${c.duration}</div>
+      </div>
+      <div class="clip-body">
+        <div class="clip-title">${c.title}</div>
+        <div class="clip-quote">${c.quote}</div>
+        <div class="clip-footer">
+          <div class="clip-time">${c.range}</div>
+          <button class="add-clip-btn">ADD TO CLIP</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  listEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.add-clip-btn');
+    if (!btn) return;
+    const added = btn.classList.toggle('added');
+    btn.textContent = added ? 'ADDED ✓' : 'ADD TO CLIP';
+  });
+
+  // Nav switching
+  const views = {
+    editor: document.getElementById('editorView'),
+    media: document.getElementById('mediaView'),
+    highlights: document.getElementById('highlightsView'),
+    subtitles: document.getElementById('subtitlesView'),
+    exports: document.getElementById('exportsView'),
+    settings: document.getElementById('settingsView'),
+  };
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const target = btn.dataset.view;
+      Object.entries(views).forEach(([key, el]) => {
+        el.style.display = (key === target) ? 'flex' : 'none';
+      });
+    });
+  });
+
+  // Tool rail
+  document.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // Play / pause + timecode simulation
+  const playBtn = document.getElementById('playBtn');
+  const timecodeEl = document.getElementById('timecode');
+  const playhead = document.getElementById('playhead');
+  let playing = false;
+  let seconds = 14*60 + 22;
+  const totalSeconds = 45*60;
+  let timer = null;
+
+  function fmt(s){
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60);
+    const pad = n => String(n).padStart(2,'0');
+    return `${pad(h)}:${pad(m)}:${pad(sec)}:15`;
+  }
+  function fmtTotal(s){
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60);
+    const pad = n => String(n).padStart(2,'0');
+    return `${pad(h)}:${pad(m)}:${pad(sec)}:00`;
+  }
+  function render(){
+    timecodeEl.textContent = `${fmt(seconds)} / ${fmtTotal(totalSeconds)}`;
+    const pct = Math.min(seconds/totalSeconds, 1);
+    playhead.style.left = `${120 + pct*820}px`;
+  }
+  playBtn.addEventListener('click', () => {
+    playing = !playing;
+    playBtn.classList.toggle('playing', playing);
+    if (playing){
+      timer = setInterval(() => {
+        seconds += 1;
+        if (seconds >= totalSeconds){ seconds = totalSeconds; playing=false; playBtn.classList.remove('playing'); clearInterval(timer); }
+        render();
+      }, 1000);
+    } else {
+      clearInterval(timer);
+    }
+  });
+  document.getElementById('prevBtn').addEventListener('click', () => { seconds = Math.max(0, seconds-300); render(); });
+  document.getElementById('nextBtn').addEventListener('click', () => { seconds = Math.min(totalSeconds, seconds+300); render(); });
+  render();
+
+  // Volume slider drag
+  const volumeTrack = document.getElementById('volumeTrack');
+  const volumeFill = document.getElementById('volumeFill');
+  let muted = false;
+  function setVolume(clientX){
+    const rect = volumeTrack.getBoundingClientRect();
+    const pct = Math.min(1, Math.max(0, (clientX - rect.left)/rect.width));
+    volumeFill.style.width = `${pct*100}%`;
+  }
+  let draggingVol = false;
+  volumeTrack.addEventListener('mousedown', e => { draggingVol = true; setVolume(e.clientX); });
+  window.addEventListener('mousemove', e => { if (draggingVol) setVolume(e.clientX); });
+  window.addEventListener('mouseup', () => draggingVol = false);
+  document.getElementById('muteBtn').addEventListener('click', () => {
+    muted = !muted;
+    volumeFill.style.opacity = muted ? '0.25' : '1';
+  });
+
+  // Timeline zoom slider
+  const zoomSlider = document.getElementById('zoomSlider');
+  const zoomFill = document.getElementById('zoomFill');
+  function setZoom(clientX){
+    const rect = zoomSlider.getBoundingClientRect();
+    const pct = Math.min(1, Math.max(0, (clientX - rect.left)/rect.width));
+    zoomFill.style.width = `${pct*100}%`;
+  }
+  let draggingZoom = false;
+  zoomSlider.addEventListener('mousedown', e => { draggingZoom = true; setZoom(e.clientX); });
+  window.addEventListener('mousemove', e => { if (draggingZoom) setZoom(e.clientX); });
+  window.addEventListener('mouseup', () => draggingZoom = false);
+  document.getElementById('zoomInBtn').addEventListener('click', () => {
+    const w = parseFloat(zoomFill.style.width) || 60;
+    zoomFill.style.width = `${Math.min(100, w+10)}%`;
+  });
+  document.getElementById('zoomOutBtn').addEventListener('click', () => {
+    const w = parseFloat(zoomFill.style.width) || 60;
+    zoomFill.style.width = `${Math.max(0, w-10)}%`;
+  });
+
+  // Scrub playhead by clicking the timeline
+  const tracks = document.getElementById('tracks');
+  tracks.addEventListener('click', (e) => {
+    if (e.target.closest('.clip') || e.target.closest('.sub-chip')) return;
+    const rect = tracks.getBoundingClientRect();
+    const x = e.clientX - rect.left - 120;
+    const pct = Math.min(1, Math.max(0, x/820));
+    seconds = Math.round(pct*totalSeconds);
+    render();
+  });
+
+  // Re-scan spinner
+  document.getElementById('rescanBtn').addEventListener('click', function(){
+    this.classList.add('spinning');
+    setTimeout(() => this.classList.remove('spinning'), 600);
+  });
+
+  // Cloud save / export feedback
+  document.getElementById('cloudSaveBtn').addEventListener('click', function(){
+    const original = this.innerHTML;
+    this.innerHTML = original.replace('Cloud Save', 'Saved ✓');
+    setTimeout(() => { this.innerHTML = original; }, 1500);
+  });
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    const original = this.innerHTML;
+    this.innerHTML = original.replace('Export', 'Exporting…');
+    setTimeout(() => { this.innerHTML = original; }, 1500);
+  });
+
+  // Fullscreen toggle for preview
+  document.getElementById('fullscreenBtn').addEventListener('click', () => {
+    const el = document.querySelector('.preview');
+    if (!document.fullscreenElement){ el.requestFullscreen?.(); }
+    else { document.exitFullscreen?.(); }
+  });
+
+  // Simple clip drag-reorder feedback (visual only)
+  document.querySelectorAll('.clip').forEach(clip => {
+    clip.addEventListener('dragstart', () => clip.style.opacity = '0.5');
+    clip.addEventListener('dragend', () => clip.style.opacity = '1');
+  });
+
+})();
+</script>
+
+</body>
+</html>
