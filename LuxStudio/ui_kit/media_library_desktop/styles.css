@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #1A141A;
+    color: #D3AF85;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Base color utilities (kept for reference/fallback alongside the Tailwind config
+   in index.html, which is what actually drives the bg-*/text-*/border-* classes) */
+.bg-dark { background-color: #1A141A; }
+.bg-panel { background-color: #423738; }
+.text-accent { color: #F4B315; }
+.bg-accent { background-color: #F4B315; }
+.border-brand { border-color: #8E5915; }
+.text-primary { color: #FFFFFF; }
+.text-secondary { color: #D3AF85; }
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #1A141A;
+}
+::-webkit-scrollbar-thumb {
+    background: #8E5915;
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #F4B315;
+}
+
+.media-card:hover .overlay-actions {
+    opacity: 1;
+}
