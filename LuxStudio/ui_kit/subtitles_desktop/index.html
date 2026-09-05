@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuxStudio - Subtitle Editor & Captioning</title>
+
+<!-- Phosphor Icons -->
+<script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web"></script>
+
+<!-- Tailwind CSS (CDN / play build) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          dark: '#1A141A',
+          panel: '#423738',
+          accent: '#F4B315',
+          brand: '#8E5915',
+          primary: '#FFFFFF',
+          secondary: '#D3AF85',
+        }
+      }
+    }
+  }
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: #1A141A;
+    color: #D3AF85;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  .timeline-track {
+    background: repeating-linear-gradient(90deg, #423738, #423738 100px, #1A141A 101px);
+  }
+
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #1A141A;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #8E5915;
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #F4B315;
+  }
+
+  .active-sub {
+    background: rgba(244, 179, 21, 0.1);
+    border-left: 3px solid #F4B315;
+  }
+
+  /* Drag-to-resize handle for the transcription panel. Plain CSS/inline
+     styles rather than new Tailwind arbitrary-width classes, so width can be
+     driven directly by JS regardless of Tailwind's runtime JIT. */
+  #transcriptionPanel { flex-shrink: 0; }
+  .resizer {
+    width: 6px;
+    flex-shrink: 0;
+    cursor: col-resize;
+    position: relative;
+    background: transparent;
+  }
+  .resizer::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0; left: 50%;
+    width: 1px;
+    background: #8E5915;
+    transform: translateX(-50%);
+    transition: background-color .12s ease, width .12s ease;
+  }
+  .resizer:hover::before,
+  .resizer.dragging::before {
+    background: #F4B315;
+    width: 2px;
+  }
+</style>
+</head>
+<body class="flex">
+
+  <!-- ============ LEFT SIDEBAR ============ -->
+  <aside class="w-64 bg-dark border-r border-brand flex flex-col shrink-0 h-screen">
+    <div class="p-6 mb-4">
+      <div class="flex items-center gap-3">
+        <div class="relative w-10 h-10 flex items-center justify-center">
+          <img src="icon.png" alt="LuxStudio logo" class="w-full h-full">
+        </div>
+        <div>
+          <span class="text-xl font-bold tracking-tight text-white">Lux</span><span class="text-xl font-bold tracking-tight text-accent">Studio</span>
+        </div>
+      </div>
+    </div>
+
+    <nav class="flex-1 px-4 space-y-2">
+      <a href="#" class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg transition-colors">
+        <i class="ph-bold ph-video-camera text-xl"></i>
+        <span>Editor</span>
+      </a>
+      <a href="#" class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg transition-colors">
+        <i class="ph-bold ph-stack text-xl"></i>
+        <span>Media Library</span>
+      </a>
+      <a href="#" class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg transition-colors">
+        <i class="ph-bold ph-magic-wand text-xl"></i>
+        <span>AI Highlights</span>
+      </a>
+      <a href="#" class="flex items-center gap-3 px-4 py-3 bg-panel rounded-lg text-white font-medium">
+        <i class="ph-bold ph-text-t text-xl text-accent"></i>
+        <span>Subtitles</span>
+      </a>
+      <a href="#" class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg transition-colors">
+        <i class="ph-bold ph-export text-xl"></i>
+        <span>Exports</span>
+      </a>
+    </nav>
+
+    <div class="p-4 mt-auto border-t border-brand/30">
+      <div class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg cursor-pointer">
+        <i class="ph-bold ph-gear text-xl"></i>
+        <span>Settings</span>
+      </div>
+      <div class="mt-4 bg-panel/30 p-4 rounded-xl border border-brand/20">
+        <p class="text-xs text-secondary mb-2 uppercase tracking-widest font-bold">Current Project</p>
+        <p class="text-sm text-white font-medium truncate">Sunday Sermon - Grace ...</p>
+        <div class="mt-3 w-full bg-dark h-1.5 rounded-full overflow-hidden">
+          <div class="bg-accent h-full w-3/4"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN COLUMN ============ -->
+  <div class="flex-1 flex flex-col h-screen overflow-hidden">
+
+    <!-- Top bar -->
+    <header class="h-16 border-b border-brand flex items-center justify-between px-6 bg-dark">
+      <div class="flex items-center gap-4">
+        <h1 class="text-white font-semibold">Subtitle Editor &amp; Captioning</h1>
+        <span class="px-2 py-0.5 rounded bg-panel text-[10px] text-accent border border-brand font-bold uppercase tracking-wider">Auto-Generated</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 bg-panel px-3 py-1.5 rounded-lg border border-brand/40">
+          <i class="ph ph-globe text-secondary"></i>
+          <select class="bg-transparent text-xs text-white border-none outline-none cursor-pointer">
+            <option>English (US)</option>
+            <option>Spanish (ES)</option>
+            <option>Portuguese (BR)</option>
+          </select>
+        </div>
+        <button class="flex items-center gap-2 px-6 py-2 bg-accent text-dark font-bold rounded-lg text-sm hover:bg-[#E59312] transition-all">
+          <i class="ph-bold ph-magic-wand"></i>
+          Re-Transcribe
+        </button>
+      </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+
+      <!-- ============ TRANSCRIPTION PANEL ============ -->
+      <div id="transcriptionPanel" class="flex flex-col bg-dark overflow-hidden" style="width:420px;">
+        <div class="p-4 border-b border-brand/30 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="ph-bold ph-article text-accent"></i>
+            <span class="text-sm font-bold text-white uppercase tracking-wider">Transcription</span>
+          </div>
+          <div class="flex gap-2">
+            <button class="p-1.5 text-secondary hover:text-white hover:bg-panel rounded"><i class="ph ph-magnifying-glass"></i></button>
+            <button class="p-1.5 text-secondary hover:text-white hover:bg-panel rounded"><i class="ph ph-pencil-simple-line"></i></button>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-1">
+          <div class="p-3 rounded-lg hover:bg-panel/20 group transition-all active-sub">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-mono text-accent/60">00:00 - 00:04</span>
+              <button class="opacity-0 group-hover:opacity-100 text-secondary hover:text-accent transition-opacity"><i class="ph ph-dots-three-vertical"></i></button>
+            </div>
+            <p class="text-sm text-white leading-relaxed outline-none focus:text-accent" contenteditable="true">Good morning everyone, it's such a blessing to see so many faces today in Grace Community.</p>
+          </div>
+
+          <div class="p-3 rounded-lg hover:bg-panel/20 group transition-all border-l-3 border-transparent">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-mono text-accent/60">00:04 - 00:08</span>
+              <button class="opacity-0 group-hover:opacity-100 text-secondary hover:text-accent transition-opacity"><i class="ph ph-dots-three-vertical"></i></button>
+            </div>
+            <p class="text-sm text-white leading-relaxed outline-none focus:text-accent" contenteditable="true">Today we're going to dive into the core of our message, focusing on the power of community.</p>
+          </div>
+
+          <div class="p-3 rounded-lg hover:bg-panel/20 group transition-all border-l-3 border-transparent">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-mono text-accent/60">00:08 - 00:12</span>
+              <button class="opacity-0 group-hover:opacity-100 text-secondary hover:text-accent transition-opacity"><i class="ph ph-dots-three-vertical"></i></button>
+            </div>
+            <p class="text-sm text-white leading-relaxed outline-none focus:text-accent" contenteditable="true">When we gather together, the spirit moves in ways we cannot imagine alone.</p>
+          </div>
+
+          <div class="p-3 rounded-lg hover:bg-panel/20 group transition-all border-l-3 border-transparent">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-mono text-accent/60">00:12 - 00:16</span>
+              <button class="opacity-0 group-hover:opacity-100 text-secondary hover:text-accent transition-opacity"><i class="ph ph-dots-three-vertical"></i></button>
+            </div>
+            <p class="text-sm text-white leading-relaxed outline-none focus:text-accent" contenteditable="true">Grace is not just found in the quiet moments, but in every heart that beats for the kingdom.</p>
+          </div>
+
+          <div class="p-3 rounded-lg hover:bg-panel/20 group transition-all border-l-3 border-transparent">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-mono text-accent/60">00:16 - 00:21</span>
+              <button class="opacity-0 group-hover:opacity-100 text-secondary hover:text-accent transition-opacity"><i class="ph ph-dots-three-vertical"></i></button>
+            </div>
+            <p class="text-sm text-white leading-relaxed outline-none focus:text-accent" contenteditable="true">Please turn your bibles with me to Matthew chapter five, as we explore the Beatitudes.</p>
+          </div>
+        </div>
+
+        <div class="p-4 border-t border-brand/30 bg-panel/10">
+          <button class="w-full flex items-center justify-center gap-2 py-2 border border-dashed border-brand/50 text-secondary hover:text-accent hover:border-accent rounded-lg text-xs transition-all">
+            <i class="ph ph-plus-circle"></i>
+            Add Manual Segment
+          </button>
+        </div>
+      </div>
+
+      <!-- Resize handle: drag right to expand the transcription panel, left to shrink it -->
+      <div id="panelResizer" class="resizer" title="Drag to resize"></div>
+
+      <!-- ============ RIGHT COLUMN (preview + timeline) ============ -->
+      <div class="flex-1 flex flex-col bg-dark/50">
+
+        <!-- Video preview -->
+        <div class="flex-1 flex flex-col items-center justify-center p-8 bg-black">
+          <div class="relative aspect-video w-full max-w-3xl bg-black rounded-xl overflow-hidden border border-brand/30 shadow-2xl">
+            <div class="absolute inset-0 bg-panel/40 flex items-center justify-center">
+              <span class="text-6xl font-bold text-brand opacity-10">LUX</span>
+
+              <div class="absolute bottom-16 left-0 right-0 px-12 text-center">
+                <p class="text-2xl font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] px-4 py-2 bg-black/40 inline-block rounded-lg">
+                  "Good morning everyone, it's such a blessing to see so many faces today."
+                </p>
+              </div>
+            </div>
+
+            <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <button class="text-white/70 hover:text-accent"><i class="ph-fill ph-skip-back text-xl"></i></button>
+                  <button class="w-10 h-10 bg-accent rounded-full flex items-center justify-center text-dark hover:scale-105 transition-transform">
+                    <i class="ph-fill ph-pause text-xl"></i>
+                  </button>
+                  <button class="text-white/70 hover:text-accent"><i class="ph-fill ph-skip-forward text-xl"></i></button>
+                </div>
+                <div class="text-white font-mono text-xs tracking-widest bg-panel/50 px-3 py-1 rounded border border-brand/30">
+                  00:00:02:15
+                </div>
+                <div class="flex items-center gap-4">
+                  <i class="ph-bold ph-speaker-high text-white/70"></i>
+                  <i class="ph-bold ph-corners-out text-white/70"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subtitle style toolbar -->
+          <div class="mt-6 flex items-center gap-4 bg-panel/20 p-2 rounded-xl border border-brand/20">
+            <div class="flex items-center border-r border-brand/30 px-2 gap-2">
+              <button class="w-8 h-8 flex items-center justify-center bg-accent text-dark rounded"><i class="ph-bold ph-text-b"></i></button>
+              <button class="w-8 h-8 flex items-center justify-center text-secondary hover:bg-panel rounded"><i class="ph-bold ph-text-italic"></i></button>
+            </div>
+            <div class="flex items-center border-r border-brand/30 px-2 gap-2">
+              <span class="text-[10px] uppercase font-bold text-secondary">Size</span>
+              <input type="number" value="24" class="bg-dark border border-brand/30 text-white text-xs w-12 px-1 rounded py-1 outline-none">
+            </div>
+            <div class="flex items-center px-2 gap-2">
+              <span class="text-[10px] uppercase font-bold text-secondary">Color</span>
+              <div class="w-5 h-5 rounded-full bg-white border border-brand/30 cursor-pointer"></div>
+              <div class="w-5 h-5 rounded-full bg-accent cursor-pointer"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="h-64 border-t border-brand bg-dark overflow-hidden flex flex-col">
+          <div class="h-10 border-b border-brand/30 flex items-center px-4 justify-between bg-panel/20">
+            <div class="flex items-center gap-6">
+              <div class="flex items-center gap-2 text-xs font-bold text-secondary">
+                <i class="ph-bold ph-waveform"></i>
+                <span>Subtitle Sync</span>
+              </div>
+              <div class="flex gap-12">
+                <span class="text-[10px] text-accent">00:00</span>
+                <span class="text-[10px] text-white/40">00:05</span>
+                <span class="text-[10px] text-white/40">00:10</span>
+                <span class="text-[10px] text-white/40">00:15</span>
+                <span class="text-[10px] text-white/40">00:20</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <button class="text-secondary hover:text-white"><i class="ph-bold ph-magnifying-glass-minus"></i></button>
+              <input type="range" class="accent-accent w-24 h-1">
+              <button class="text-secondary hover:text-white"><i class="ph-bold ph-magnifying-glass-plus"></i></button>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-y-auto relative timeline-track scrollbar-hide">
+
+            <!-- Playhead -->
+            <div class="absolute left-[150px] top-0 bottom-0 w-px bg-accent z-20">
+              <div class="w-3 h-3 bg-accent rounded-full -ml-[6px] shadow-lg shadow-accent/50"></div>
+            </div>
+
+            <!-- Audio track -->
+            <div class="flex items-center h-20 border-b border-brand/10 group bg-panel/5">
+              <div class="w-32 h-full bg-panel/40 border-r border-brand/20 flex flex-col justify-center px-3 gap-1 sticky left-0 z-10">
+                <i class="ph-bold ph-waveform text-secondary text-xs"></i>
+                <span class="text-[10px] uppercase font-bold text-secondary">Audio 1</span>
+              </div>
+              <div class="flex-1 h-full py-2 relative flex items-center px-4">
+                <div class="w-full h-8 opacity-20 flex items-center gap-[2px]">
+                  <div class="flex-1 h-4 bg-accent rounded-full"></div><div class="flex-1 h-12 bg-accent rounded-full"></div><div class="flex-1 h-6 bg-accent rounded-full"></div><div class="flex-1 h-16 bg-accent rounded-full"></div><div class="flex-1 h-8 bg-accent rounded-full"></div><div class="flex-1 h-10 bg-accent rounded-full"></div><div class="flex-1 h-4 bg-accent rounded-full"></div><div class="flex-1 h-12 bg-accent rounded-full"></div><div class="flex-1 h-6 bg-accent rounded-full"></div><div class="flex-1 h-16 bg-accent rounded-full"></div><div class="flex-1 h-8 bg-accent rounded-full"></div><div class="flex-1 h-10 bg-accent rounded-full"></div><div class="flex-1 h-4 bg-accent rounded-full"></div><div class="flex-1 h-12 bg-accent rounded-full"></div><div class="flex-1 h-6 bg-accent rounded-full"></div><div class="flex-1 h-16 bg-accent rounded-full"></div><div class="flex-1 h-8 bg-accent rounded-full"></div><div class="flex-1 h-10 bg-accent rounded-full"></div><div class="flex-1 h-4 bg-accent rounded-full"></div><div class="flex-1 h-12 bg-accent rounded-full"></div><div class="flex-1 h-6 bg-accent rounded-full"></div><div class="flex-1 h-16 bg-accent rounded-full"></div><div class="flex-1 h-8 bg-accent rounded-full"></div><div class="flex-1 h-10 bg-accent rounded-full"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Captions track -->
+            <div class="flex items-center h-20 border-b border-brand/10 group">
+              <div class="w-32 h-full bg-panel/40 border-r border-brand/20 flex flex-col justify-center px-3 gap-1 sticky left-0 z-10">
+                <i class="ph-bold ph-text-t text-accent text-xs"></i>
+                <span class="text-[10px] uppercase font-bold text-secondary">Captions</span>
+              </div>
+              <div class="flex-1 h-full py-4 relative">
+                <div class="absolute left-0 w-[240px] h-full bg-accent border border-dark rounded-sm px-2 flex items-center cursor-move">
+                  <span class="text-[10px] text-dark font-bold truncate">Good morning everyone, it's such a blessing...</span>
+                  <div class="absolute right-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-white/30"></div>
+                </div>
+                <div class="absolute left-[242px] w-[220px] h-full bg-panel border border-brand/40 rounded-sm px-2 flex items-center cursor-move">
+                  <span class="text-[10px] text-white/70 font-medium truncate">Today we're going to dive into the core...</span>
+                  <div class="absolute right-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-white/30"></div>
+                </div>
+                <div class="absolute left-[464px] w-[280px] h-full bg-panel border border-brand/40 rounded-sm px-2 flex items-center cursor-move">
+                  <span class="text-[10px] text-white/70 font-medium truncate">When we gather together, the spirit moves...</span>
+                  <div class="absolute right-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-white/30"></div>
+                </div>
+                <div class="absolute left-[746px] w-[200px] h-full bg-panel border border-brand/40 rounded-sm px-2 flex items-center cursor-move">
+                  <span class="text-[10px] text-white/70 font-medium truncate">Grace is not just found in the quiet...</span>
+                  <div class="absolute right-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-white/30"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var resizer = document.getElementById('panelResizer');
+    var panel = document.getElementById('transcriptionPanel');
+    var MIN_WIDTH = 320;
+    var MAX_WIDTH = 640;
+    var dragging = false;
+    var panelLeft = 0;
+
+    resizer.addEventListener('mousedown', function(e){
+      dragging = true;
+      panelLeft = panel.getBoundingClientRect().left;
+      resizer.classList.add('dragging');
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', function(e){
+      if (!dragging) return;
+      var newWidth = e.clientX - panelLeft;
+      newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newWidth));
+      panel.style.width = newWidth + 'px';
+    });
+
+    window.addEventListener('mouseup', function(){
+      if (!dragging) return;
+      dragging = false;
+      resizer.classList.remove('dragging');
+      document.body.style.userSelect = '';
+    });
+  })();
+  </script>
+
+</body>
+</html>
