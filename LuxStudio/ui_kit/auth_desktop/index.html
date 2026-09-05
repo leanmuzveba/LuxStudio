@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuxStudio — Sign In</title>
+
+<!-- Self-hosted Phosphor Bold + Fill (the two weights this page actually uses).
+     Loading the icon font from a CDN <link rel="stylesheet"> silently fails in
+     sandboxed/CSP-restricted preview contexts — bundling it here is the fix. -->
+<link rel="stylesheet" href="fonts/phosphor-bold.css">
+<link rel="stylesheet" href="fonts/phosphor-fill.css">
+
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Splash screen: shown briefly on load, then fades out -->
+  <div id="splash-screen" class="splash-screen">
+    <div class="splash-inner">
+      <div class="splash-logo-row">
+        <div class="logo-mark logo-mark--lg">
+          <img src="icon.png" alt="LuxStudio logo">
+        </div>
+        <div class="splash-title-col">
+          <div class="splash-title">
+            <span class="text-white">Lux</span><span class="text-accent">Studio</span>
+          </div>
+          <p class="splash-subtitle">Next-Gen Video Suite</p>
+        </div>
+      </div>
+      <div class="splash-loader-row">
+        <span class="loader"></span>
+        <p class="splash-loading-text">Initializing Editor Workspace</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth card -->
+  <div id="auth-container" class="auth-container fade-in">
+    <div class="auth-card">
+
+      <div class="auth-card-logo">
+        <div class="logo-mark">
+          <img src="icon.png" alt="LuxStudio logo">
+        </div>
+        <div class="auth-card-title">
+          <span class="text-white">Lux</span><span class="text-accent">Studio</span>
+        </div>
+      </div>
+
+      <div class="auth-tabs">
+        <button type="button" id="tab-signin" class="auth-tab active" onclick="switchTab('signin')">Sign In</button>
+        <button type="button" id="tab-signup" class="auth-tab" onclick="switchTab('signup')">Create Account</button>
+      </div>
+
+      <!-- Sign in form -->
+      <div id="signin-form">
+        <div class="field-group">
+
+          <div class="field">
+            <label class="field-label">Email Address</label>
+            <div class="input-wrap">
+              <i class="ph-bold ph-envelope input-icon"></i>
+              <input type="email" placeholder="name@company.com" class="text-input">
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-label-row">
+              <label class="field-label">Password</label>
+              <a href="#" class="link-accent">Forgot?</a>
+            </div>
+            <div class="input-wrap">
+              <i class="ph-bold ph-lock-key input-icon"></i>
+              <input type="password" placeholder="••••••••" class="text-input">
+            </div>
+          </div>
+
+          <div class="checkbox-row">
+            <input type="checkbox" id="remember" class="checkbox">
+            <label for="remember" class="checkbox-label">Keep me signed in on this device</label>
+          </div>
+
+          <button type="button" class="btn-primary">SIGN IN TO EDITOR</button>
+        </div>
+      </div>
+
+      <!-- Create account form -->
+      <div id="signup-form" class="hidden">
+        <div class="field-group">
+
+          <div class="field-grid-2">
+            <div class="field">
+              <label class="field-label">First Name</label>
+              <input type="text" class="text-input text-input--plain">
+            </div>
+            <div class="field">
+              <label class="field-label">Last Name</label>
+              <input type="text" class="text-input text-input--plain">
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Work Email</label>
+            <input type="email" class="text-input text-input--plain">
+          </div>
+
+          <div class="field">
+            <label class="field-label">Choose Password</label>
+            <input type="password" class="text-input text-input--plain">
+          </div>
+
+          <p class="terms-text">
+            By creating an account, you agree to our
+            <a href="#" class="link-accent-underline">Terms of Service</a> and
+            <a href="#" class="link-accent-underline">Privacy Policy</a>.
+          </p>
+
+          <button type="button" class="btn-primary">START CREATING NOW</button>
+        </div>
+      </div>
+
+      <div class="divider">
+        <div class="divider-line"></div>
+        <span class="divider-text">Or continue with</span>
+      </div>
+
+      <div class="social-grid">
+        <button type="button" class="btn-social">
+          <i class="ph-bold ph-google-logo social-icon-accent"></i> Google
+        </button>
+        <button type="button" class="btn-social">
+          <i class="ph-fill ph-apple-logo"></i> Apple
+        </button>
+      </div>
+
+    </div>
+
+    <div class="footer-note">
+      <p><i class="ph-bold ph-shield-check"></i> Enterprise-grade security by Lux Systems</p>
+    </div>
+  </div>
+
+  <!-- Decorative background glows -->
+  <div class="bg-glows">
+    <div class="glow glow--top"></div>
+    <div class="glow glow--bottom"></div>
+  </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        splash.classList.add('fade-out');
+        setTimeout(() => { splash.style.display = 'none'; }, 800);
+      }, 1400);
+    });
+
+    function switchTab(tab) {
+      const signinForm = document.getElementById('signin-form');
+      const signupForm = document.getElementById('signup-form');
+      const tabSignin = document.getElementById('tab-signin');
+      const tabSignup = document.getElementById('tab-signup');
+
+      if (tab === 'signin') {
+        signinForm.classList.remove('hidden');
+        signupForm.classList.add('hidden');
+        tabSignin.classList.add('active');
+        tabSignup.classList.remove('active');
+      } else {
+        signupForm.classList.remove('hidden');
+        signinForm.classList.add('hidden');
+        tabSignup.classList.add('active');
+        tabSignin.classList.remove('active');
+      }
+    }
+  </script>
+</body>
+</html>
