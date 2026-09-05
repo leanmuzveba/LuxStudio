@@ -135,12 +135,16 @@ def remove_ranges(
         return
 
     expr = "not(" + "+".join(_between_clause(r) for r in ranges_to_remove) + ")"
+    # expr contains commas (from between(t,start,end)'s own arguments), which
+    # ffmpeg's filtergraph parser would otherwise read as filter separators —
+    # e.g. "select=not(between(t,1.1,2.3))" gets split into a bogus filter
+    # named "1.1". Single-quoting the whole expression value stops that.
     _run(
         [
             "ffmpeg", "-y",
             "-i", str(source_path),
-            "-vf", f"select={expr},setpts=N/FRAME_RATE/TB",
-            "-af", f"aselect={expr},asetpts=N/SR/TB",
+            "-vf", f"select='{expr}',setpts=N/FRAME_RATE/TB",
+            "-af", f"aselect='{expr}',asetpts=N/SR/TB",
             str(output_path),
         ],
         "ffmpeg silence removal",
