@@ -1,0 +1,82 @@
+/*
+  @import must come before any other rule (incl. @tailwind), or browsers
+  drop it. Custom pieces Tailwind's utilities don't cover: the icon font,
+  self-hosted Inter, custom scrollbars, and the confidence-ring transition.
+*/
+@import url("fonts/phosphor-bold.css");
+@import url("fonts/phosphor-fill.css");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/inter-latin-400-normal.woff2") format("woff2"),
+       url("fonts/inter-latin-400-normal.woff") format("woff");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/inter-latin-500-normal.woff2") format("woff2"),
+       url("fonts/inter-latin-500-normal.woff") format("woff");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/inter-latin-600-normal.woff2") format("woff2"),
+       url("fonts/inter-latin-600-normal.woff") format("woff");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/inter-latin-700-normal.woff2") format("woff2"),
+       url("fonts/inter-latin-700-normal.woff") format("woff");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("fonts/inter-latin-800-normal.woff2") format("woff2"),
+       url("fonts/inter-latin-800-normal.woff") format("woff");
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Thin, theme-matched scrollbars for the two scrollable panes */
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background-color: #8E5915;
+  border-radius: 9999px;
+}
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #8E5915 transparent;
+}
+
+/* Circular "viral score" progress ring */
+.confidence-ring {
+  transition: stroke-dashoffset 0.6s ease;
+}

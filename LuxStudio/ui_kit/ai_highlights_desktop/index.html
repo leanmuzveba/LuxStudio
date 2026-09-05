@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuxStudio — AI Highlights Engine</title>
+
+<!-- Compiled Tailwind output + self-hosted Inter + self-hosted Phosphor icons.
+     No CDNs, no build step needed to view this — just open the file. -->
+<link rel="stylesheet" href="styles.css">
+
+<!-- Drag-to-resize handle for the right panel. Plain CSS/inline styles rather
+     than new Tailwind classes, since styles.css is a precompiled build output
+     (no JIT at runtime) scanned only against this file's original classes. -->
+<style>
+  #reelsPanel { flex-shrink: 0; }
+  .resizer {
+    width: 6px;
+    flex-shrink: 0;
+    cursor: col-resize;
+    position: relative;
+    background: transparent;
+  }
+  .resizer::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0; left: 50%;
+    width: 1px;
+    background: #8E5915;
+    transform: translateX(-50%);
+    transition: background-color .12s ease, width .12s ease;
+  }
+  .resizer:hover::before,
+  .resizer.dragging::before {
+    background: #F4B315;
+    width: 2px;
+  }
+</style>
+</head>
+
+<body class="flex bg-dark text-secondary font-sans">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="w-64 bg-dark border-r border-brand flex flex-col shrink-0 h-screen">
+
+    <!-- Logo -->
+    <div class="p-6 mb-4">
+      <div class="flex items-center gap-3">
+        <div class="relative w-10 h-10 flex items-center justify-center">
+          <img src="icon.png" alt="LuxStudio logo" class="w-full h-full">
+        </div>
+        <div>
+          <span class="text-xl font-bold tracking-tight text-white">Lux</span><span class="text-xl font-bold tracking-tight text-accent">Studio</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-4 space-y-2">
+      <a href="#" class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg transition-colors">
+        <i class="ph-bold ph-video-camera text-xl"></i> Editor
+      </a>
+      <a href="#" class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg transition-colors">
+        <i class="ph-bold ph-stack text-xl"></i> Media Library
+      </a>
+      <a href="#" class="flex items-center gap-3 px-4 py-3 bg-panel rounded-lg text-white font-medium">
+        <i class="ph-bold ph-magic-wand text-xl text-accent"></i> AI Highlights
+      </a>
+      <a href="#" class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg transition-colors">
+        <i class="ph-bold ph-text-t text-xl"></i> Subtitles
+      </a>
+      <a href="#" class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg transition-colors">
+        <i class="ph-bold ph-export text-xl"></i> Exports
+      </a>
+    </nav>
+
+    <!-- Bottom: settings + current project -->
+    <div class="p-4 mt-auto border-t border-brand/30">
+      <div class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg cursor-pointer">
+        <i class="ph-bold ph-gear text-xl"></i>
+        <span>Settings</span>
+      </div>
+
+      <div class="mt-4 bg-panel/30 p-4 rounded-xl border border-brand/20">
+        <p class="text-xs text-secondary mb-2 uppercase tracking-widest font-bold">Current Project</p>
+        <p class="text-sm text-white font-medium truncate">Sunday Sermon - Grace ...</p>
+        <div class="mt-3 w-full bg-dark h-1.5 rounded-full overflow-hidden">
+          <div class="bg-accent h-full w-3/4"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="flex-1 flex flex-col h-screen overflow-hidden bg-dark">
+
+    <!-- Header -->
+    <header class="h-16 border-b border-brand flex items-center justify-between px-8 bg-dark shrink-0">
+      <div class="flex items-center gap-6">
+        <div class="flex items-center gap-2">
+          <i class="ph-bold ph-magic-wand text-accent text-xl"></i>
+          <h1 class="text-white font-bold text-lg">AI Highlights Engine</h1>
+        </div>
+        <div class="h-4 w-px bg-brand/30"></div>
+        <div class="flex items-center gap-3">
+          <span class="text-secondary text-xs font-medium">Processing: Sunday Sermon Feed</span>
+          <!-- Platform target icons kept in each platform's own real brand color (not a
+               LuxStudio accent) — same convention as any "share to" icon row; recognizability
+               matters more here than palette purity, unlike the tag/badge colors below. -->
+          <div class="flex -space-x-2">
+            <div class="w-6 h-6 rounded-full bg-blue-500/20 border border-blue-500 flex items-center justify-center">
+              <i class="ph-bold ph-tiktok-logo text-[10px] text-blue-400"></i>
+            </div>
+            <div class="w-6 h-6 rounded-full bg-pink-500/20 border border-pink-500 flex items-center justify-center">
+              <i class="ph-bold ph-instagram-logo text-[10px] text-pink-400"></i>
+            </div>
+            <div class="w-6 h-6 rounded-full bg-red-500/20 border border-red-500 flex items-center justify-center">
+              <i class="ph-bold ph-youtube-logo text-[10px] text-red-400"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <button class="flex items-center gap-2 px-4 py-2 text-white bg-panel border border-brand hover:bg-brand/20 rounded-lg text-sm transition-all">
+          <i class="ph-bold ph-arrows-counter-clockwise"></i> Refresh Analysis
+        </button>
+        <button class="flex items-center gap-2 px-6 py-2 bg-accent text-dark font-bold rounded-lg text-sm hover:bg-[#E59312] transition-all shadow-lg shadow-accent/10">
+          <i class="ph-bold ph-lightning"></i> Generate All Clips
+        </button>
+      </div>
+    </header>
+
+    <!-- Body: segments (left) + reels/suggestions (right) -->
+    <div class="flex-1 flex overflow-hidden">
+
+      <!-- LEFT: Detected Viral Segments -->
+      <div class="flex-1 flex flex-col border-r border-brand custom-scroll overflow-y-auto">
+        <div class="p-8 pb-4">
+          <h2 class="text-white text-xl font-bold mb-2">Detected Viral Segments</h2>
+          <p class="text-secondary text-sm">Our AI has analyzed emotional peaks, audience retention patterns, and key speaker transitions to find the best 15 clips.</p>
+        </div>
+
+        <div class="p-8 pt-0 grid grid-cols-2 gap-6">
+
+          <!-- Card 1 -->
+          <div class="bg-panel/20 border border-brand/30 rounded-2xl p-4 hover:border-accent transition-all group cursor-pointer relative overflow-hidden">
+            <div class="flex gap-4">
+              <div class="w-40 aspect-[9/16] bg-black rounded-xl relative overflow-hidden shrink-0 border border-brand/20 shadow-xl">
+                <div class="absolute inset-0 flex items-center justify-center bg-panel/40">
+                  <i class="ph-fill ph-play text-accent text-3xl opacity-0 group-hover:opacity-100 transition-opacity z-10"></i>
+                  <span class="text-white/10 font-bold text-4xl">S1</span>
+                </div>
+                <div class="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-white">00:52</div>
+              </div>
+              <div class="flex-1 flex flex-col">
+                <div class="flex items-start justify-between mb-2">
+                  <span class="px-2 py-1 bg-accent/10 text-accent text-[10px] font-bold rounded border border-accent/20 tracking-wider uppercase">High Retention</span>
+                  <div class="flex flex-col items-center">
+                    <div class="relative w-10 h-10">
+                      <svg class="w-full h-full -rotate-90">
+                        <circle cx="20" cy="20" r="18" fill="none" stroke="#423738" stroke-width="3"/>
+                        <circle cx="20" cy="20" r="18" fill="none" stroke="#F4B315" stroke-width="3" stroke-dasharray="113" stroke-dashoffset="11" class="confidence-ring"/>
+                      </svg>
+                      <div class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white">92%</div>
+                    </div>
+                    <span class="text-[8px] text-secondary/60 uppercase font-bold mt-1">Viral Score</span>
+                  </div>
+                </div>
+                <h3 class="text-white font-bold text-sm mb-2 group-hover:text-accent transition-colors">The "Walk of Faith" Metaphor</h3>
+                <p class="text-secondary text-xs leading-relaxed line-clamp-3 mb-4">"Your purpose isn't found in a destination, it's found in the very next step you take with conviction..."</p>
+                <div class="mt-auto pt-4 border-t border-brand/10 flex items-center justify-between">
+                  <span class="text-[10px] font-mono text-accent/60">12:15 — 13:07</span>
+                  <div class="flex gap-2">
+                    <button class="p-1.5 hover:bg-white/5 rounded text-secondary hover:text-white transition-colors"><i class="ph-bold ph-pencil-simple"></i></button>
+                    <button class="p-1.5 hover:bg-white/5 rounded text-secondary hover:text-white transition-colors"><i class="ph-bold ph-plus"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="bg-panel/20 border border-brand/30 rounded-2xl p-4 hover:border-accent transition-all group cursor-pointer relative overflow-hidden">
+            <div class="flex gap-4">
+              <div class="w-40 aspect-[9/16] bg-black rounded-xl relative overflow-hidden shrink-0 border border-brand/20 shadow-xl">
+                <div class="absolute inset-0 flex items-center justify-center bg-panel/40">
+                  <i class="ph-fill ph-play text-accent text-3xl opacity-0 group-hover:opacity-100 transition-opacity z-10"></i>
+                  <span class="text-white/10 font-bold text-4xl">S2</span>
+                </div>
+                <div class="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-white">01:04</div>
+              </div>
+              <div class="flex-1 flex flex-col">
+                <div class="flex items-start justify-between mb-2">
+                  <span class="px-2 py-1 bg-secondary/10 text-secondary text-[10px] font-bold rounded border border-secondary/20 tracking-wider uppercase">Strong Hooks</span>
+                  <div class="flex flex-col items-center">
+                    <div class="relative w-10 h-10">
+                      <svg class="w-full h-full -rotate-90">
+                        <circle cx="20" cy="20" r="18" fill="none" stroke="#423738" stroke-width="3"/>
+                        <circle cx="20" cy="20" r="18" fill="none" stroke="#F4B315" stroke-width="3" stroke-dasharray="113" stroke-dashoffset="25" class="confidence-ring"/>
+                      </svg>
+                      <div class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white">78%</div>
+                    </div>
+                    <span class="text-[8px] text-secondary/60 uppercase font-bold mt-1">Viral Score</span>
+                  </div>
+                </div>
+                <h3 class="text-white font-bold text-sm mb-2 group-hover:text-accent transition-colors">Grace Under Pressure</h3>
+                <p class="text-secondary text-xs leading-relaxed line-clamp-3 mb-4">"When the world pushes, grace pushes back with a kindness that is inexplicable to the mind but felt in the soul..."</p>
+                <div class="mt-auto pt-4 border-t border-brand/10 flex items-center justify-between">
+                  <span class="text-[10px] font-mono text-accent/60">24:45 — 25:49</span>
+                  <div class="flex gap-2">
+                    <button class="p-1.5 hover:bg-white/5 rounded text-secondary hover:text-white transition-colors"><i class="ph-bold ph-pencil-simple"></i></button>
+                    <button class="p-1.5 hover:bg-white/5 rounded text-secondary hover:text-white transition-colors"><i class="ph-bold ph-plus"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="bg-panel/20 border border-brand/30 rounded-2xl p-4 hover:border-accent transition-all group cursor-pointer relative overflow-hidden">
+            <div class="flex gap-4">
+              <div class="w-40 aspect-[9/16] bg-black rounded-xl relative overflow-hidden shrink-0 border border-brand/20 shadow-xl">
+                <div class="absolute inset-0 flex items-center justify-center bg-panel/40">
+                  <i class="ph-fill ph-play text-accent text-3xl opacity-0 group-hover:opacity-100 transition-opacity z-10"></i>
+                  <span class="text-white/10 font-bold text-4xl">S3</span>
+                </div>
+                <div class="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-white">00:35</div>
+              </div>
+              <div class="flex-1 flex flex-col">
+                <div class="flex items-start justify-between mb-2">
+                  <span class="px-2 py-1 bg-brand/10 text-brand text-[10px] font-bold rounded border border-brand/20 tracking-wider uppercase">Trending Topic</span>
+                  <div class="flex flex-col items-center">
+                    <div class="relative w-10 h-10">
+                      <svg class="w-full h-full -rotate-90">
+                        <circle cx="20" cy="20" r="18" fill="none" stroke="#423738" stroke-width="3"/>
+                        <circle cx="20" cy="20" r="18" fill="none" stroke="#F4B315" stroke-width="3" stroke-dasharray="113" stroke-dashoffset="15" class="confidence-ring"/>
+                      </svg>
+                      <div class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white">88%</div>
+                    </div>
+                    <span class="text-[8px] text-secondary/60 uppercase font-bold mt-1">Viral Score</span>
+                  </div>
+                </div>
+                <h3 class="text-white font-bold text-sm mb-2 group-hover:text-accent transition-colors">The Community Effect</h3>
+                <p class="text-secondary text-xs leading-relaxed line-clamp-3 mb-4">"Individual sparks are easily extinguished. But a community on fire for truth is impossible to ignore..."</p>
+                <div class="mt-auto pt-4 border-t border-brand/10 flex items-center justify-between">
+                  <span class="text-[10px] font-mono text-accent/60">05:10 — 05:45</span>
+                  <div class="flex gap-2">
+                    <button class="p-1.5 hover:bg-white/5 rounded text-secondary hover:text-white transition-colors"><i class="ph-bold ph-pencil-simple"></i></button>
+                    <button class="p-1.5 hover:bg-white/5 rounded text-secondary hover:text-white transition-colors"><i class="ph-bold ph-plus"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4 -->
+          <div class="bg-panel/20 border border-brand/30 rounded-2xl p-4 hover:border-accent transition-all group cursor-pointer relative overflow-hidden">
+            <div class="flex gap-4">
+              <div class="w-40 aspect-[9/16] bg-black rounded-xl relative overflow-hidden shrink-0 border border-brand/20 shadow-xl">
+                <div class="absolute inset-0 flex items-center justify-center bg-panel/40">
+                  <i class="ph-fill ph-play text-accent text-3xl opacity-0 group-hover:opacity-100 transition-opacity z-10"></i>
+                  <span class="text-white/10 font-bold text-4xl">S4</span>
+                </div>
+                <div class="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-white">00:48</div>
+              </div>
+              <div class="flex-1 flex flex-col">
+                <div class="flex items-start justify-between mb-2">
+                  <span class="px-2 py-1 bg-white/10 text-white text-[10px] font-bold rounded border border-white/20 tracking-wider uppercase">Emotional Peak</span>
+                  <div class="flex flex-col items-center">
+                    <div class="relative w-10 h-10">
+                      <svg class="w-full h-full -rotate-90">
+                        <circle cx="20" cy="20" r="18" fill="none" stroke="#423738" stroke-width="3"/>
+                        <circle cx="20" cy="20" r="18" fill="none" stroke="#F4B315" stroke-width="3" stroke-dasharray="113" stroke-dashoffset="18" class="confidence-ring"/>
+                      </svg>
+                      <div class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white">84%</div>
+                    </div>
+                    <span class="text-[8px] text-secondary/60 uppercase font-bold mt-1">Viral Score</span>
+                  </div>
+                </div>
+                <h3 class="text-white font-bold text-sm mb-2 group-hover:text-accent transition-colors">A Final Call to Purpose</h3>
+                <p class="text-secondary text-xs leading-relaxed line-clamp-3 mb-4">"Look to your left, look to your right. You are not here by accident. This moment is the beginning..."</p>
+                <div class="mt-auto pt-4 border-t border-brand/10 flex items-center justify-between">
+                  <span class="text-[10px] font-mono text-accent/60">42:10 — 42:58</span>
+                  <div class="flex gap-2">
+                    <button class="p-1.5 hover:bg-white/5 rounded text-secondary hover:text-white transition-colors"><i class="ph-bold ph-pencil-simple"></i></button>
+                    <button class="p-1.5 hover:bg-white/5 rounded text-secondary hover:text-white transition-colors"><i class="ph-bold ph-plus"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Resize handle: drag left to expand the reels panel, right to shrink it -->
+      <div id="panelResizer" class="resizer" title="Drag to resize"></div>
+
+      <!-- RIGHT: Highlight Reels (resizable) -->
+      <div id="reelsPanel" class="flex flex-col bg-panel/10 custom-scroll overflow-y-auto" style="width:440px;">
+
+        <!-- Smart Highlight Reels -->
+        <div class="p-6">
+          <div class="flex items-center gap-2 mb-4">
+            <i class="ph-bold ph-trend-up text-accent"></i>
+            <h2 class="text-white font-bold text-sm">Smart Highlight Reels</h2>
+          </div>
+
+          <div class="space-y-4">
+            <!-- Reel 1 -->
+            <div class="bg-dark/60 border border-brand/30 rounded-xl p-4 hover:bg-panel/20 transition-all cursor-pointer group">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded bg-accent/20 flex items-center justify-center">
+                    <i class="ph-bold ph-film-strip text-accent"></i>
+                  </div>
+                  <div>
+                    <p class="text-xs font-bold text-white">The Inspirational Cut</p>
+                    <p class="text-[10px] text-secondary">6 clips · 03:45 total</p>
+                  </div>
+                </div>
+                <div class="flex flex-col items-end">
+                  <span class="text-[10px] text-accent font-bold">96% Conf.</span>
+                  <span class="text-[8px] text-secondary/60 uppercase font-bold">AI Score</span>
+                </div>
+              </div>
+              <div class="flex gap-1 h-1.5 w-full mb-3">
+                <div class="flex-[2] bg-accent rounded-full"></div>
+                <div class="flex-[1] bg-accent/40 rounded-full"></div>
+                <div class="flex-[3] bg-accent rounded-full"></div>
+                <div class="flex-[2] bg-accent rounded-full"></div>
+              </div>
+              <button class="w-full py-2 bg-panel rounded-lg text-[11px] font-bold text-white hover:bg-accent hover:text-dark transition-all">PREVIEW REEL</button>
+            </div>
+
+            <!-- Reel 2 -->
+            <div class="bg-dark/60 border border-brand/30 rounded-xl p-4 hover:bg-panel/20 transition-all cursor-pointer group">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded bg-secondary/10 flex items-center justify-center">
+                    <i class="ph-bold ph-heart text-secondary"></i>
+                  </div>
+                  <div>
+                    <p class="text-xs font-bold text-white">Emotional Impact Reel</p>
+                    <p class="text-[10px] text-secondary">4 clips · 02:20 total</p>
+                  </div>
+                </div>
+                <div class="flex flex-col items-end">
+                  <span class="text-[10px] text-accent font-bold">89% Conf.</span>
+                  <span class="text-[8px] text-secondary/60 uppercase font-bold">AI Score</span>
+                </div>
+              </div>
+              <div class="flex gap-1 h-1.5 w-full mb-3">
+                <div class="flex-[3] bg-secondary/60 rounded-full"></div>
+                <div class="flex-[4] bg-secondary/60 rounded-full"></div>
+                <div class="flex-[2] bg-secondary/20 rounded-full"></div>
+              </div>
+              <button class="w-full py-2 bg-panel rounded-lg text-[11px] font-bold text-white hover:bg-accent hover:text-dark transition-all">PREVIEW REEL</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Footer status bar -->
+    <div class="h-12 border-t border-brand bg-dark/80 px-8 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-6">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+          <span class="text-[10px] font-bold text-white uppercase tracking-widest">Engine Active</span>
+        </div>
+        <div class="h-4 w-px bg-brand/30"></div>
+        <div class="flex items-center gap-4 text-[10px] text-secondary font-mono">
+          <span>CPU: 24%</span>
+          <span>GPU: 68%</span>
+          <span>RAM: 12.4GB</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-[10px] text-secondary">Project Duration: 45:00:00</span>
+        <div class="w-32 h-1 bg-panel rounded-full overflow-hidden">
+          <div class="h-full bg-accent w-full"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+  (function(){
+    var resizer = document.getElementById('panelResizer');
+    var panel = document.getElementById('reelsPanel');
+    var MIN_WIDTH = 320;
+    var MAX_WIDTH = 720;
+    var dragging = false;
+
+    resizer.addEventListener('mousedown', function(e){
+      dragging = true;
+      resizer.classList.add('dragging');
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', function(e){
+      if (!dragging) return;
+      var newWidth = window.innerWidth - e.clientX;
+      newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newWidth));
+      panel.style.width = newWidth + 'px';
+    });
+
+    window.addEventListener('mouseup', function(){
+      if (!dragging) return;
+      dragging = false;
+      resizer.classList.remove('dragging');
+      document.body.style.userSelect = '';
+    });
+  })();
+  </script>
+
+</body>
+</html>
