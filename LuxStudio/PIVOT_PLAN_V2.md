@@ -26,33 +26,31 @@ moves to a single functionality pass covering both breakpoints.
   standalone preview files that use external `<link>`/`<img>` references); commit only once the
   user has actually seen it and confirmed.
 
-## Open decisions — resolve before Phase 24 (functionality) starts
+## Decisions (resolved 2026-09-06, before Phase 24 starts)
 
-These fell out of comparing the desktop mockups against the current mobile app and backend. None
-are blocking the remaining mockup-collection phases, but Phase 24+ can't start until they are.
+These fell out of comparing the desktop mockups against the current mobile app and backend.
 
-1. **Auth/Login is new scope.** The backend currently has explicitly "no auth" and no user-account
-   model at all (`CLAUDE.md`). A real login page means deciding: full multi-user accounts (sign
-   up/in, password or OAuth, per-user data isolation) vs. a lightweight single-church gate (one
-   shared passcode, no real account system). This changes backend scope significantly either way.
-2. **Media Library implies a bigger data model than "one video per project."** The backend today
-   stores everything under `storage/<project_id>/` — one project, one source video. The Media
-   Library mockup (folders, assets reused across projects, a storage quota footer) implies an
-   asset library that outlives any single project. Needs its own backend entity.
-3. **Exports as its own nav destination implies an export history/queue** — but Phase 12 of V1
-   deliberately deleted that (`exportJobs`, batch export) in favor of one single-clip
-   export/share flow. Decide: reintroduce export history (now scoped above individual projects,
-   like the media library), or keep "Exports" as a shortcut into the existing Share screen.
-4. **Subtitles as its own nav destination** conflicts with V1's decision (Phase 9) to fold
-   captions into the automatic Analyse pipeline + the Editor's transcript panel, with the old
-   standalone Captions screen deleted. Decide whether desktop gets real standalone subtitle
-   styling controls (font/position/timing) that don't exist anywhere yet, or is just a reskin of
-   the existing transcript editor.
-5. **IA mismatch**: the desktop sidebar nav shown so far is Editor / Media Library /
-   AI Highlights / Subtitles / Exports / Settings — the mobile bottom-nav is Home / Editor /
-   Clips / Settings + an Import FAB. These need reconciling: keep both navs intentionally
-   different per breakpoint (fine, but should be a deliberate choice, not a drift), change mobile
-   to match, or collapse desktop to match mobile's four destinations.
+1. **Auth/Login.** ✅ **Single shared church passcode** — one shared password/PIN gates the whole
+   app for the church's media team. No signup flow, no per-user accounts, no per-user data
+   isolation. Backend scope: one gate check before the app loads, not a user table or session
+   system.
+2. **Media Library data model.** ✅ **Real asset library** — a new backend entity independent of
+   any single project: folders, assets reused across multiple projects, a storage quota footer.
+   Replaces the current `storage/<project_id>/`-only, one-video-per-project model; projects
+   reference library assets rather than owning private copies.
+3. **Exports as its own nav destination.** ✅ **Reintroduce export history/queue** — scoped above
+   individual projects, like the media library: past exports, in-flight render status, re-download/
+   re-share old exports. Un-deletes and extends what V1's Phase 12 removed (`exportJobs`, batch
+   export), rather than just shortcutting into Share.
+4. **Subtitles as its own nav destination.** ✅ **Real standalone subtitle controls** — new
+   functionality: font/style, position, and timing controls for captions, as their own screen. Not
+   just a reskin of the Editor's transcript panel (which V1's Phase 9 built to replace the old
+   deleted standalone Captions screen) — this adds real caption-styling capability on top of it.
+5. **IA mismatch (desktop sidebar vs. mobile bottom-nav).** ✅ **Deliberately different per
+   breakpoint** — desktop's sidebar (Editor / Media Library / AI Highlights / Subtitles / Exports /
+   Settings) stays as-is, matching its richer feature set from decisions #2-4 above; mobile's
+   bottom-nav stays lean (Home / Editor / Clips / Settings + Import FAB) for thumb reach. This is
+   the intentional design, not drift to fix later.
 
 ## Phases
 
@@ -65,29 +63,36 @@ are blocking the remaining mockup-collection phases, but Phase 24+ can't start u
 - **Phase 20 — Desktop Exports mockup** — DONE (`ui_kit/exports_desktop/`, commit `546fe3d`)
 - **Phase 21 — Desktop Settings mockup** — DONE (`ui_kit/settings_desktop/`)
 - **Phase 22 — Splash screen mockup** — DONE (`ui_kit/auth/`, commit `d377e63`)
-- **Phase 23 — Login page mockup** — DONE (`ui_kit/auth_desktop/`, commit `d377e63`); surfaces Decision #1 above, still unresolved
+- **Phase 23 — Login page mockup** — DONE (`ui_kit/auth_desktop/`, commit `d377e63`)
 
-All mockup-collection phases (16-23) are now complete. Phase 24 (functionality stream) is next, gated on the 5 open decisions above.
+All mockup-collection phases (16-23) are now complete, and all 5 decisions above are resolved.
+Phase 24 (functionality stream) is next.
 
 ### Functionality stream (after all of the above)
 
 - **Phase 24 — Responsive breakpoint architecture.** A shared width-based layout switch
   (`LayoutBuilder`/`MediaQuery`) so each screen picks its mobile or desktop widget tree off one
   `AppState`, with no logic duplicated. A reusable "desktop shell" (sidebar nav + header),
-  analogous to the existing `bottom_nav_scaffold.dart` for mobile. Resolve Decision #5 here.
-- **Phase 25 — Auth & Splash/Login functionality.** Resolve Decision #1, then build whatever that
-  implies: splash screen as a route gate, login page wired to the chosen auth strategy, backend
-  auth endpoints if real accounts are in scope.
+  analogous to the existing `bottom_nav_scaffold.dart` for mobile. Builds the two navs per
+  Decision #5 (intentionally different, not reconciled into one).
+- **Phase 25 — Auth & Splash/Login functionality.** Splash screen as a route gate; login page
+  wired to a single shared church passcode (Decision #1) — one backend gate-check endpoint, no
+  user table/sessions.
 - **Phase 26 — Desktop Editor functionality.** Wire `ui_kit/editor_desktop/` to real `AppState`:
   playback and transcript-driven cuts (already exist), tool rail scoped to what's realistically
   buildable (crop/pan likely stay inert, same as mobile's Audio/AI Cuts/Overlay), multi-track
   timeline cosmetic-only unless real multi-track editing gets scoped in.
-- **Phase 27 — Media Library functionality.** Resolve Decision #2, add backend asset-library
-  endpoints (folders, list/upload/delete), wire the desktop screen for real.
+- **Phase 27 — Media Library functionality.** Add backend asset-library endpoints (folders,
+  list/upload/delete, storage quota) per Decision #2, wire the desktop screen for real; projects
+  reference library assets instead of owning private copies.
 - **Phase 28 — AI Highlights functionality (desktop).** Reskin of the existing AI clip
   suggestion feature (`ai_clips_screen.dart`) onto its desktop mockup.
-- **Phase 29 — Subtitles functionality (desktop).** Resolve Decision #4, then wire it.
-- **Phase 30 — Exports functionality (desktop).** Resolve Decision #3, then wire it.
+- **Phase 29 — Subtitles functionality (desktop).** Build real standalone subtitle styling
+  controls (font/style, position, timing) per Decision #4 — new functionality, not just a
+  transcript-panel reskin.
+- **Phase 30 — Exports functionality (desktop).** Reintroduce export history/queue per Decision
+  #3 (scoped above individual projects, like the media library) — past exports, in-flight render
+  status, re-download/re-share.
 - **Phase 31 — Desktop Settings functionality.** Reskin of the existing `settings_screen.dart`.
 - **Phase 32 — End-to-end verification** (supersedes V1's never-run Phase 15). Full manual
   walkthrough at both mobile and desktop widths, backend via `uvicorn`, confirm exports produce a
