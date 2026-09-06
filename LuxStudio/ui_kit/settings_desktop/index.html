@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuxStudio — System Settings</title>
+
+<!-- Icons -->
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/thin/style.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/light/style.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/bold/style.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/duotone/style.css">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+<!-- Font -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          dark: '#1A141A',
+          panel: '#423738',
+          accent: '#F4B315',
+          brand: '#8E5915',
+          primary: '#FFFFFF',
+          secondary: '#D3AF85',
+        }
+      }
+    }
+  }
+</script>
+
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="flex">
+
+<!-- Sidebar -->
+<aside class="w-64 bg-dark border-r border-brand flex flex-col shrink-0 h-screen">
+    <div class="p-6 mb-4">
+        <div class="flex items-center gap-3">
+            <div class="relative w-10 h-10 flex items-center justify-center">
+                <img src="icon.png" alt="LuxStudio logo" class="w-full h-full">
+            </div>
+            <div>
+                <span class="text-xl font-bold tracking-tight text-white">Lux</span><span class="text-xl font-bold tracking-tight text-accent">Studio</span>
+            </div>
+        </div>
+    </div>
+
+    <nav class="flex-1 px-4 space-y-2">
+        <a href="#" class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg transition-colors">
+            <i class="ph-bold ph-video-camera text-xl"></i>
+            Editor
+        </a>
+        <a href="#" class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg transition-colors">
+            <i class="ph-bold ph-stack text-xl"></i>
+            Media Library
+        </a>
+        <a href="#" class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg transition-colors">
+            <i class="ph-bold ph-magic-wand text-xl"></i>
+            AI Highlights
+        </a>
+        <a href="#" class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg transition-colors">
+            <i class="ph-bold ph-text-t text-xl"></i>
+            Subtitles
+        </a>
+        <a href="#" class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-panel/50 rounded-lg transition-colors">
+            <i class="ph-bold ph-export text-xl"></i>
+            Exports
+        </a>
+    </nav>
+
+    <div class="p-4 mt-auto border-t border-brand/30">
+        <div class="flex items-center gap-3 px-4 py-3 bg-panel rounded-lg text-white font-medium cursor-pointer">
+            <i class="ph-bold ph-gear text-xl text-accent"></i>
+            <span>Settings</span>
+        </div>
+        <div class="mt-4 bg-panel/30 p-4 rounded-xl border border-brand/20">
+            <p class="text-xs text-secondary mb-2 uppercase tracking-widest font-bold">Current Project</p>
+            <p class="text-sm text-white font-medium truncate">Sunday Sermon - Grace ...</p>
+            <div class="mt-3 w-full bg-dark h-1.5 rounded-full overflow-hidden">
+                <div class="bg-accent h-full w-3/4"></div>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<!-- Main -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden bg-dark">
+
+    <header class="h-16 border-b border-brand flex items-center justify-between px-8 bg-dark">
+        <div class="flex items-center gap-4">
+            <h1 class="text-white font-semibold text-lg">System Settings</h1>
+            <span class="px-2 py-0.5 rounded bg-panel/40 text-[10px] text-secondary border border-brand/30 font-bold uppercase tracking-wider">v2.4.0 Stable</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <button class="flex items-center gap-2 px-6 py-2 border border-brand/40 text-secondary font-bold rounded-lg text-sm hover:bg-panel/30 transition-all">Discard Changes</button>
+            <button class="flex items-center gap-2 px-8 py-2 bg-accent text-dark font-bold rounded-lg text-sm hover:bg-[#E59312] transition-all">Save Changes</button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- Settings nav -->
+        <div class="w-72 border-r border-brand py-6 overflow-y-auto custom-scrollbar">
+            <div class="px-6 mb-4">
+                <h2 class="text-xs font-bold text-secondary uppercase tracking-widest mb-4 opacity-50">Preferences</h2>
+            </div>
+            <nav class="space-y-1 px-3">
+                <a href="#" class="settings-nav-item active flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all">
+                    <i class="ph-bold ph-user text-lg"></i>
+                    Account & Profile
+                </a>
+                <a href="#" class="settings-nav-item text-secondary flex items-center gap-3 px-4 py-3 rounded-lg text-sm hover:bg-panel/20 transition-all">
+                    <i class="ph-bold ph-monitor text-lg"></i>
+                    Video Preferences
+                </a>
+                <a href="#" class="settings-nav-item text-secondary flex items-center gap-3 px-4 py-3 rounded-lg text-sm hover:bg-panel/20 transition-all">
+                    <i class="ph-bold ph-cpu text-lg"></i>
+                    Output & Encoding
+                </a>
+                <a href="#" class="settings-nav-item text-secondary flex items-center gap-3 px-4 py-3 rounded-lg text-sm hover:bg-panel/20 transition-all">
+                    <i class="ph-bold ph-keyboard text-lg"></i>
+                    Keyboard Shortcuts
+                </a>
+                <a href="#" class="settings-nav-item text-secondary flex items-center gap-3 px-4 py-3 rounded-lg text-sm hover:bg-panel/20 transition-all">
+                    <i class="ph-bold ph-bell text-lg"></i>
+                    Notifications
+                </a>
+                <a href="#" class="settings-nav-item text-secondary flex items-center gap-3 px-4 py-3 rounded-lg text-sm hover:bg-panel/20 transition-all">
+                    <i class="ph-bold ph-shield-check text-lg"></i>
+                    Privacy & Security
+                </a>
+            </nav>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-12">
+            <div class="max-w-3xl">
+
+                <!-- Account & Profile -->
+                <section class="mb-12">
+                    <div class="flex items-center gap-4 mb-8">
+                        <div class="w-20 h-20 rounded-full bg-panel border-2 border-accent flex items-center justify-center relative group cursor-pointer">
+                            <i class="ph-bold ph-user text-3xl text-accent"></i>
+                            <div class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="ph-bold ph-camera text-white"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-white mb-1">Grace Community</h2>
+                            <p class="text-secondary text-sm">Member since October 2023 &bull; Pro Plan</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-bold text-secondary uppercase mb-2">Display Name</label>
+                            <input type="text" value="Grace Community Media" class="w-full bg-panel/20 border border-brand/40 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-accent">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-secondary uppercase mb-2">Email Address</label>
+                            <input type="email" value="media@gracecommunity.church" class="w-full bg-panel/20 border border-brand/40 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-accent">
+                        </div>
+                    </div>
+                </section>
+
+                <div class="h-px bg-brand/20 my-10"></div>
+
+                <!-- Output & Encoding -->
+                <section class="mb-12">
+                    <h3 class="text-white font-bold text-lg mb-6 flex items-center gap-2">
+                        <i class="ph-bold ph-cpu text-accent"></i>
+                        Output &amp; Encoding
+                    </h3>
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between p-4 bg-panel/10 border border-brand/20 rounded-xl">
+                            <div>
+                                <p class="text-white font-semibold text-sm">Hardware Acceleration</p>
+                                <p class="text-xs text-secondary mt-1">Use GPU for faster rendering and playback (Recommended)</p>
+                            </div>
+                            <div class="toggle-switch active"></div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-xs font-bold text-secondary uppercase mb-2">Default Export Path</label>
+                                <div class="flex gap-2">
+                                    <input type="text" value="/Volumes/LuxStudio/Exports/" readonly class="flex-1 bg-panel/20 border border-brand/40 rounded-lg px-4 py-2 text-white text-xs focus:outline-none">
+                                    <button class="px-3 py-2 bg-panel/40 border border-brand/40 rounded-lg text-secondary hover:text-white transition-colors">
+                                        <i class="ph-bold ph-folder-open"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-secondary uppercase mb-2">Proxy Resolution</label>
+                                <select class="w-full bg-panel/20 border border-brand/40 rounded-lg px-4 py-2 text-white text-sm focus:outline-none appearance-none cursor-pointer">
+                                    <option>1/4 (Fastest)</option>
+                                    <option selected>1/2 (Balanced)</option>
+                                    <option>Original (Full)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="h-px bg-brand/20 my-10"></div>
+
+                <!-- Keyboard Shortcuts -->
+                <section class="mb-12">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-white font-bold text-lg flex items-center gap-2">
+                            <i class="ph-bold ph-keyboard text-accent"></i>
+                            Keyboard Shortcuts
+                        </h3>
+                        <button class="text-xs font-bold text-accent hover:underline">Export Layout</button>
+                    </div>
+                    <div class="bg-panel/10 border border-brand/20 rounded-xl overflow-hidden">
+                        <div class="grid grid-cols-2 gap-px bg-brand/20">
+                            <div class="bg-[#1A141A] p-4 flex justify-between items-center">
+                                <span class="text-sm text-secondary">Split Clip at Playhead</span>
+                                <kbd class="px-2 py-1 bg-panel text-white text-xs rounded border border-brand/40 font-mono">⌘ + B</kbd>
+                            </div>
+                            <div class="bg-[#1A141A] p-4 flex justify-between items-center">
+                                <span class="text-sm text-secondary">Ripple Delete</span>
+                                <kbd class="px-2 py-1 bg-panel text-white text-xs rounded border border-brand/40 font-mono">⇧ + ⌫</kbd>
+                            </div>
+                            <div class="bg-[#1A141A] p-4 flex justify-between items-center">
+                                <span class="text-sm text-secondary">Toggle Snap</span>
+                                <kbd class="px-2 py-1 bg-panel text-white text-xs rounded border border-brand/40 font-mono">S</kbd>
+                            </div>
+                            <div class="bg-[#1A141A] p-4 flex justify-between items-center">
+                                <span class="text-sm text-secondary">Export Active Sequence</span>
+                                <kbd class="px-2 py-1 bg-panel text-white text-xs rounded border border-brand/40 font-mono">⌘ + M</kbd>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="h-px bg-brand/20 my-10"></div>
+
+                <!-- Notification Preferences -->
+                <section class="mb-12">
+                    <h3 class="text-white font-bold text-lg mb-6 flex items-center gap-2">
+                        <i class="ph-bold ph-bell text-accent"></i>
+                        Notification Preferences
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-secondary">Email me when a render is finished</span>
+                            <div class="toggle-switch active"></div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-secondary">Desktop notification for AI highlight processing</span>
+                            <div class="toggle-switch active"></div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-secondary">Security alerts and login notifications</span>
+                            <div class="toggle-switch active"></div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-secondary">Newsletter and feature updates</span>
+                            <div class="toggle-switch"></div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+</main>
+
+</body>
+</html>

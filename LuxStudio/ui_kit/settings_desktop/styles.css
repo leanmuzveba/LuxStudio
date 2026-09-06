@@ -1,0 +1,64 @@
+/* LuxStudio — System Settings mockup
+   Custom base styles + component classes layered on top of Tailwind CSS. */
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #1A141A;
+    color: #D3AF85;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #1A141A;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #8E5915;
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #F4B315;
+}
+
+/* Active state for the settings side-nav links */
+.settings-nav-item.active {
+    background-color: #423738;
+    color: white;
+    border-left: 3px solid #F4B315;
+}
+
+/* Toggle switch */
+.toggle-switch {
+    width: 36px;
+    height: 20px;
+    background-color: #423738;
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.toggle-switch.active {
+    background-color: #F4B315;
+}
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background-color: white;
+    border-radius: 50%;
+    transition: left 0.2s;
+}
+.toggle-switch.active::after {
+    left: 18px;
+}

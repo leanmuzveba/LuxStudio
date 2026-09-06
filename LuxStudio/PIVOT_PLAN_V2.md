@@ -60,12 +60,14 @@ are blocking the remaining mockup-collection phases, but Phase 24+ can't start u
 
 - **Phase 16 — Desktop Editor mockup** — DONE (`ui_kit/editor_desktop/`, commit `b1c1d28`)
 - **Phase 17 — Desktop Media Library mockup** — DONE (`ui_kit/media_library_desktop/`, commit `2c73b2d`)
-- **Phase 18 — Desktop AI Highlights mockup** — waiting on design from user
-- **Phase 19 — Desktop Subtitles mockup** — waiting on design from user
-- **Phase 20 — Desktop Exports mockup** — waiting on design from user
-- **Phase 21 — Desktop Settings mockup** — waiting on design from user
-- **Phase 22 — Splash screen mockup** — waiting on design from user
-- **Phase 23 — Login page mockup** — waiting on design from user; surfaces Decision #1 above
+- **Phase 18 — Desktop AI Highlights mockup** — DONE (`ui_kit/ai_highlights_desktop/`, commit `37ddcb6`)
+- **Phase 19 — Desktop Subtitles mockup** — DONE (`ui_kit/subtitles_desktop/`, commit `91754ae`)
+- **Phase 20 — Desktop Exports mockup** — DONE (`ui_kit/exports_desktop/`, commit `546fe3d`)
+- **Phase 21 — Desktop Settings mockup** — DONE (`ui_kit/settings_desktop/`)
+- **Phase 22 — Splash screen mockup** — DONE (`ui_kit/auth/`, commit `d377e63`)
+- **Phase 23 — Login page mockup** — DONE (`ui_kit/auth_desktop/`, commit `d377e63`); surfaces Decision #1 above, still unresolved
+
+All mockup-collection phases (16-23) are now complete. Phase 24 (functionality stream) is next, gated on the 5 open decisions above.
 
 ### Functionality stream (after all of the above)
 
