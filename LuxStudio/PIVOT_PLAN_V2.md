@@ -70,11 +70,19 @@ Phase 24 (functionality stream) is next.
 
 ### Functionality stream (after all of the above)
 
-- **Phase 24 — Responsive breakpoint architecture.** A shared width-based layout switch
-  (`LayoutBuilder`/`MediaQuery`) so each screen picks its mobile or desktop widget tree off one
-  `AppState`, with no logic duplicated. A reusable "desktop shell" (sidebar nav + header),
-  analogous to the existing `bottom_nav_scaffold.dart` for mobile. Builds the two navs per
-  Decision #5 (intentionally different, not reconciled into one).
+- **Phase 24 — Responsive breakpoint architecture.** DONE. `lib/theme/breakpoints.dart` adds a
+  single 900px width threshold (`Breakpoints.isDesktop`); `lib/main.dart`'s `_ResponsiveHome` picks
+  `DesktopShellScaffold` (new) or the existing `BottomNavScaffold` off it, per Decision #5 (the two
+  navs stay intentionally different, not reconciled into one). The old app-wide 430px phone-shell
+  cap moved out of `MaterialApp.builder` into a small `PhoneShell` widget applied per-route instead
+  (`BottomNavScaffold` and every pushed "new project" flow route), so it no longer also squeezes
+  the desktop shell. `DesktopShellScaffold` (`lib/widgets/desktop_shell_scaffold.dart`) is the new
+  sidebar (logo, 5 nav destinations, pinned Settings, a "Current Project" card reading real
+  `AppState`) + content pane; only Editor, AI Highlights, and Settings have anything to show yet
+  (the existing mobile screens, reused as-is and centered at phone-shell width — no logic
+  duplicated, just not desktop-shaped yet), Media Library/Subtitles/Exports show a "lands in Phase
+  N" placeholder since those features don't exist at all yet. Covered by a new widget test
+  (simulates a 1400×900 window, confirms the sidebar shows instead of the bottom nav).
 - **Phase 25 — Auth & Splash/Login functionality.** Splash screen as a route gate; login page
   wired to a single shared church passcode (Decision #1) — one backend gate-check endpoint, no
   user table/sessions.

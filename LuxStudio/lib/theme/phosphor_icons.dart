@@ -36,4 +36,13 @@ class PhosphorIcons {
   static const plusBold = IconData(0xe3d4, fontFamily: _boldFamily, fontPackage: _package);
 
   static const caretLeft = IconData(0xe138, fontFamily: _regularFamily, fontPackage: _package);
+
+  // Desktop sidebar nav (bold weight only — the ui_kit desktop mockups
+  // differentiate active/inactive by color, not by icon shape).
+  static const videoCameraBold = IconData(0xe4da, fontFamily: _boldFamily, fontPackage: _package);
+  static const stackBold = IconData(0xe466, fontFamily: _boldFamily, fontPackage: _package);
+  static const magicWandBold = IconData(0xe6b6, fontFamily: _boldFamily, fontPackage: _package);
+  static const textTBold = IconData(0xe48a, fontFamily: _boldFamily, fontPackage: _package);
+  static const exportBold = IconData(0xeaf0, fontFamily: _boldFamily, fontPackage: _package);
+  static const gearBold = IconData(0xe270, fontFamily: _boldFamily, fontPackage: _package);
 }

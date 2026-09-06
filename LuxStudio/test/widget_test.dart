@@ -140,4 +140,16 @@ void main() {
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
     expect(app.theme?.brightness, Brightness.dark);
   });
+
+  testWidgets('A desktop-wide window shows the sidebar shell instead of the bottom nav', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await pumpApp(tester, buildTestAppState());
+
+    expect(find.text('Media Library'), findsOneWidget);
+    expect(find.text('AI Highlights'), findsOneWidget);
+    expect(find.text('New Sermon Project'), findsNothing);
+  });
 }

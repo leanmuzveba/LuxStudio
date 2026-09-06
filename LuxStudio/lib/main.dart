@@ -7,8 +7,11 @@ import 'screens/share_screen.dart';
 import 'screens/video_editor_screen.dart';
 import 'services/media_import_service.dart';
 import 'state/app_state.dart';
+import 'theme/breakpoints.dart';
 import 'theme/lux_theme.dart';
 import 'widgets/bottom_nav_scaffold.dart';
+import 'widgets/desktop_shell_scaffold.dart';
+import 'widgets/phone_shell.dart';
 
 void main() {
   runApp(const LuxStudioApp());
@@ -62,27 +65,22 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
         title: 'LuxStudio',
         debugShowCheckedModeBanner: false,
         theme: LuxTheme.dark,
-        // The ui_kit mockups are built as a "phone shell" — max-width 430px,
-        // centered, degrading gracefully to wider viewports (see
-        // ui_kit/*/styles.css's `.app { max-width: 430px; margin: 0 auto; }`
-        // and CLAUDE.md's platform-decision note). Mirror that here so the
-        // browser/desktop build doesn't stretch phone-sized UI full-width.
-        builder: (context, child) => ColoredBox(
-          color: LuxColors.background,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
-              child: child,
-            ),
-          ),
-        ),
-        home: !_checkedRecovery ? const _SplashScreen() : const BottomNavScaffold(),
+        // Desktop-width windows get [DesktopShellScaffold] full-bleed (its
+        // own sidebar + content pane); everything else — [BottomNavScaffold]
+        // and the "new project" flow routes below, none of which have a
+        // desktop treatment yet — keeps the ui_kit's original "phone shell"
+        // cap (max-width 430px, centered; see ui_kit/*/styles.css's `.app {
+        // max-width: 430px; margin: 0 auto; }` and CLAUDE.md's
+        // platform-decision note) via [PhoneShell], applied per-route below
+        // rather than once here, so it doesn't also squeeze the desktop
+        // shell. See PIVOT_PLAN_V2.md Phase 24.
+        home: !_checkedRecovery ? const _SplashScreen() : const _ResponsiveHome(),
         routes: {
-          AppRoutes.import: (_) => ImportScreen(mediaImportService: mediaImportService),
-          AppRoutes.analyse: (_) => const AnalyseScreen(),
-          AppRoutes.editor: (_) => const VideoEditorScreen(),
-          AppRoutes.clips: (_) => const AiClipsScreen(),
-          AppRoutes.share: (_) => const ShareScreen(),
+          AppRoutes.import: (_) => PhoneShell(child: ImportScreen(mediaImportService: mediaImportService)),
+          AppRoutes.analyse: (_) => const PhoneShell(child: AnalyseScreen()),
+          AppRoutes.editor: (_) => const PhoneShell(child: VideoEditorScreen()),
+          AppRoutes.clips: (_) => const PhoneShell(child: AiClipsScreen()),
+          AppRoutes.share: (_) => const PhoneShell(child: ShareScreen()),
         },
       ),
     );
@@ -99,6 +97,19 @@ class _SplashScreen extends StatelessWidget {
     return const Scaffold(
       body: Center(child: CircularProgressIndicator()),
     );
+  }
+}
+
+/// Picks the app's root shell by window width once past splash/recovery —
+/// see PIVOT_PLAN_V2.md Phase 24 and [Breakpoints].
+class _ResponsiveHome extends StatelessWidget {
+  const _ResponsiveHome();
+
+  @override
+  Widget build(BuildContext context) {
+    return Breakpoints.isDesktop(context)
+        ? const DesktopShellScaffold()
+        : const PhoneShell(child: BottomNavScaffold());
   }
 }
 
