@@ -7,6 +7,7 @@ import '../models/video_project.dart';
 import '../state/app_state.dart';
 import '../theme/lux_theme.dart';
 import '../widgets/lux_icon_button.dart';
+import '../widgets/video_scrub_mixin.dart';
 
 /// Screen 2 — Editor. Matches `ui_kit/editor/index.html` — most of its
 /// spec is inline Tailwind classes in that file, not its (47-line)
@@ -35,10 +36,7 @@ class VideoEditorScreen extends StatefulWidget {
   State<VideoEditorScreen> createState() => _VideoEditorScreenState();
 }
 
-class _VideoEditorScreenState extends State<VideoEditorScreen> {
-  VideoPlayerController? _controller;
-  String? _controllerUrl;
-  Duration _position = Duration.zero;
+class _VideoEditorScreenState extends State<VideoEditorScreen> with VideoScrubMixin<VideoEditorScreen> {
   String? _seekedForClipId;
 
   /// Jumps playback to [start] the first time [clipId] is selected (e.g.
@@ -47,61 +45,15 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
   void _seekToSelectedClipOnce(String? clipId, Duration? start) {
     if (clipId == null || start == null) return;
     if (_seekedForClipId == clipId) return;
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) return;
+    if (controller == null || !controller!.value.isInitialized) return;
     _seekedForClipId = clipId;
-    _seekTo(start);
+    seekTo(start);
   }
 
   @override
   void dispose() {
-    _controller?.removeListener(_onControllerUpdate);
-    _controller?.dispose();
+    disposeVideoScrub();
     super.dispose();
-  }
-
-  void _ensureController(String url) {
-    if (_controllerUrl == url) return;
-    _controller?.removeListener(_onControllerUpdate);
-    _controller?.dispose();
-
-    _controllerUrl = url;
-    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
-    _controller = controller;
-    controller.addListener(_onControllerUpdate);
-    controller.initialize().then((_) {
-      if (mounted) setState(() {});
-    }).catchError((Object _) {
-      // Preview stays in its not-yet-initialized state (spinner) rather
-      // than crashing the editor on an unsupported/corrupt file.
-      if (mounted) setState(() {});
-    });
-  }
-
-  void _onControllerUpdate() {
-    if (!mounted) return;
-    final controller = _controller;
-    if (controller == null) return;
-    setState(() => _position = controller.value.position);
-  }
-
-  void _togglePlayback() {
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) return;
-    if (controller.value.isPlaying) {
-      controller.pause();
-    } else {
-      controller.play();
-    }
-  }
-
-  void _seekTo(Duration position) {
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) return;
-    final clamped = position < Duration.zero
-        ? Duration.zero
-        : (position > controller.value.duration ? controller.value.duration : position);
-    controller.seekTo(clamped);
   }
 
   /// The transcript segment containing the current playback position —
@@ -109,7 +61,7 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
   /// active (with its SPLIT/DELETE/HIGHLIGHT row).
   TranscriptSegment? _currentSegment(List<TranscriptSegment> segments) {
     for (final segment in segments) {
-      if (_position >= segment.start && _position < segment.end) return segment;
+      if (position >= segment.start && position < segment.end) return segment;
     }
     return null;
   }
@@ -140,7 +92,7 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
               );
             }
             final videoUrl = appState.currentVideoUrl;
-            if (videoUrl != null) _ensureController(videoUrl);
+            if (videoUrl != null) ensureController(videoUrl);
             _seekToSelectedClipOnce(appState.selectedClip?.id, appState.selectedClip?.start);
             final currentSegment = _currentSegment(appState.transcript);
 
@@ -151,10 +103,10 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: _PreviewPane(
                     project: project,
-                    controller: _controller,
-                    position: _position,
+                    controller: controller,
+                    position: position,
                     captionText: currentSegment?.text,
-                    onTogglePlay: _togglePlayback,
+                    onTogglePlay: togglePlayback,
                   ),
                 ),
                 _buildToolRow(context),
@@ -171,9 +123,9 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
                         _TimelineArea(
                           segments: appState.transcript,
                           totalDuration: project.processedDuration,
-                          position: _position,
+                          position: position,
                           highlightedSegmentId: currentSegment?.id,
-                          onTapSegment: (s) => _seekTo(s.start),
+                          onTapSegment: (s) => seekTo(s.start),
                         ),
                         Expanded(
                           child: appState.transcript.isEmpty
@@ -190,7 +142,7 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
                                       _TranscriptLine(
                                         segment: segment,
                                         active: segment.id == currentSegment?.id,
-                                        onTap: () => _seekTo(segment.start),
+                                        onTap: () => seekTo(segment.start),
                                         onDelete: () => appState.toggleMarkForCut(segment.id),
                                         onSplit: () => _notAvailableYet('Split'),
                                         onHighlight: () => _notAvailableYet('Highlight'),

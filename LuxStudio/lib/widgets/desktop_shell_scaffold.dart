@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../screens/ai_clips_screen.dart';
 import '../screens/settings_screen.dart';
-import '../screens/video_editor_screen.dart';
+import '../screens/video_editor_desktop_screen.dart';
 import '../theme/lux_theme.dart';
 import '../theme/phosphor_icons.dart';
 import 'phone_shell.dart';
@@ -14,15 +14,15 @@ import 'phone_shell.dart';
 /// to a wide content pane, replacing [BottomNavScaffold] once the window is
 /// at least [Breakpoints.desktop] wide.
 ///
-/// Only Editor, AI Highlights, and Settings have a real screen to show yet
-/// (the existing mobile ones, reused as-is via [AppStateScope] — same
-/// [AppState], no logic duplicated). Media Library, Subtitles, and Exports
-/// don't exist as features at all yet — each needs its own backend entity
-/// per the V2 decisions — so they show a placeholder until their own
-/// functionality phase (27/29/30) builds them for real. Editor/AI
-/// Highlights/Settings likewise get their own desktop-shaped widget tree in
-/// Phases 26/28/31; until then they're shown at their original phone-shell
-/// width, centered in the wide pane, rather than stretched full-width.
+/// Editor has its own desktop-shaped widget tree ([VideoEditorDesktopScreen],
+/// Phase 26) sharing [AppState] with the mobile [VideoEditorScreen] via
+/// [VideoScrubMixin]. AI Highlights and Settings reuse the existing mobile
+/// screens as-is for now (own desktop-shaped versions land in Phases
+/// 28/31) — shown at their original phone-shell width, centered in the wide
+/// pane, rather than stretched full-width. Media Library, Subtitles, and
+/// Exports don't exist as features at all yet — each needs its own backend
+/// entity per the V2 decisions — so they show a placeholder until their own
+/// functionality phase (27/29/30) builds them for real.
 class DesktopShellScaffold extends StatefulWidget {
   const DesktopShellScaffold({super.key});
 
@@ -65,7 +65,7 @@ class _DesktopShellScaffoldState extends State<DesktopShellScaffold> {
             child: IndexedStack(
               index: _index,
               children: const [
-                PhoneShell(child: VideoEditorScreen()),
+                VideoEditorDesktopScreen(),
                 _ComingSoonPane(
                   icon: PhosphorIcons.stackBold,
                   title: 'Media Library',

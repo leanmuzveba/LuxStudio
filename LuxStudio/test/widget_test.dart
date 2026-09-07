@@ -8,6 +8,8 @@ import 'package:http/testing.dart' as http_testing;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:luxstudio/main.dart';
+import 'package:luxstudio/models/ai_clip.dart';
+import 'package:luxstudio/models/video_project.dart';
 import 'package:luxstudio/services/api_client.dart';
 import 'package:luxstudio/services/media_import_service.dart';
 import 'package:luxstudio/state/app_state.dart';
@@ -204,5 +206,41 @@ void main() {
     expect(find.text('Media Library'), findsOneWidget);
     expect(find.text('AI Highlights'), findsOneWidget);
     expect(find.text('New Sermon Project'), findsNothing);
+  });
+
+  testWidgets('Desktop Editor shows the real project and AI clip data, not mockup placeholders', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final appState = buildTestAppState();
+    appState.startImport(VideoProject(
+      id: 'p1',
+      fileName: 'sermon.mp4',
+      backendProjectId: 'test-project-id',
+      rawDuration: const Duration(minutes: 30),
+      processedDuration: const Duration(minutes: 28),
+      width: 1080,
+      height: 1920,
+      importedAt: DateTime(2026, 1, 1),
+    ));
+    appState.suggestedClips.add(AiClip(
+      id: 'c1',
+      title: 'The Power of Community',
+      start: const Duration(minutes: 4, seconds: 22),
+      end: const Duration(minutes: 5, seconds: 20),
+      viralScore: 92,
+      reason: 'Strong emotional hook',
+      category: 'viral',
+    ));
+
+    await pumpApp(tester, appState);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Shows in both the header title and the sidebar's "Current Project" card.
+    expect(find.text('sermon'), findsNWidgets(2));
+    expect(find.text('AI Clip Insights'), findsOneWidget);
+    expect(find.text('The Power of Community'), findsOneWidget);
+    expect(find.text('No project loaded yet — go import a video first.'), findsNothing);
   });
 }
