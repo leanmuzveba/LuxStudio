@@ -20,6 +20,12 @@ class Settings:
         # accounts/sessions). Unset disables /auth/verify entirely rather
         # than accepting any passcode.
         self.church_passcode: str | None = os.environ.get("CHURCH_PASSCODE")
+        # Soft display quota for the Media Library (V2 Decision #2) — not
+        # enforced server-side, just surfaced by GET /library/quota for the
+        # desktop screen's storage meter.
+        self.library_quota_bytes: int = int(
+            os.environ.get("LIBRARY_QUOTA_BYTES", str(20 * 1024 * 1024 * 1024))
+        )
         self.storage_dir: Path = Path(
             os.environ.get("STORAGE_DIR", str(BACKEND_ROOT / "storage"))
         ).resolve()

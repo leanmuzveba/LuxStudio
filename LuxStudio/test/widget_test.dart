@@ -50,6 +50,27 @@ ApiClient buildTestApiClient() {
         headers: {'content-type': 'application/json'},
       );
     }
+    if (request.method == 'GET' && path == '/library/folders') {
+      return _jsonListResponse([
+        {'id': 'f1', 'name': 'Sermon B-Roll'},
+      ]);
+    }
+    if (request.method == 'GET' && path == '/library/assets') {
+      return _jsonListResponse([
+        {
+          'id': 'a1',
+          'filename': 'sermon.mp4',
+          'folder_id': null,
+          'size_bytes': 1048576,
+          'durationMs': 60000,
+          'width': 1920,
+          'height': 1080,
+        },
+      ]);
+    }
+    if (request.method == 'GET' && path == '/library/quota') {
+      return _jsonResponse({'used_bytes': 1048576, 'limit_bytes': 21474836480});
+    }
     return http.StreamedResponse(Stream.value(utf8.encode('{}')), 200);
   });
   return ApiClient(httpClient: mockClient);
@@ -60,6 +81,12 @@ ApiClient buildTestApiClient() {
 const _testPasscode = 'letmein';
 
 http.StreamedResponse _jsonResponse(Map<String, dynamic> body) => http.StreamedResponse(
+      Stream.value(utf8.encode(jsonEncode(body))),
+      200,
+      headers: {'content-type': 'application/json'},
+    );
+
+http.StreamedResponse _jsonListResponse(List<dynamic> body) => http.StreamedResponse(
       Stream.value(utf8.encode(jsonEncode(body))),
       200,
       headers: {'content-type': 'application/json'},
@@ -242,5 +269,21 @@ void main() {
     expect(find.text('AI Clip Insights'), findsOneWidget);
     expect(find.text('The Power of Community'), findsOneWidget);
     expect(find.text('No project loaded yet — go import a video first.'), findsNothing);
+  });
+
+  testWidgets('Desktop Media Library shows real folders and assets from the backend', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await pumpApp(tester, buildTestAppState());
+
+    await tester.tap(find.text('Media Library'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('Sermon B-Roll'), findsOneWidget);
+    expect(find.text('sermon.mp4'), findsOneWidget);
+    expect(find.text('No media yet — upload a sermon video to get started.'), findsNothing);
   });
 }

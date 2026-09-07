@@ -7,6 +7,8 @@ import '../models/ai_clip.dart';
 import '../models/brand_settings.dart';
 import '../models/caption_style.dart';
 import '../models/export_destination.dart';
+import '../models/library_asset.dart';
+import '../models/library_folder.dart';
 import '../models/silence_range.dart';
 import '../models/social_copy.dart';
 import '../models/transcript_segment.dart';
@@ -14,6 +16,7 @@ import '../models/video_project.dart';
 import '../services/api_client.dart';
 import '../services/auth_store.dart';
 import '../services/brand_settings_store.dart';
+import '../services/media_library_service.dart';
 import '../services/project_store.dart';
 
 /// App-wide state for the LuxStudio flow, shared across the four screens
@@ -33,15 +36,22 @@ class AppState extends ChangeNotifier {
     ApiClient? apiClient,
     BrandSettingsStore? brandSettingsStore,
     AuthStore? authStore,
+    MediaLibraryService? mediaLibraryService,
   })  : _projectStore = projectStore ?? ProjectStore(),
         _apiClient = apiClient ?? ApiClient(),
         _brandSettingsStore = brandSettingsStore ?? BrandSettingsStore(),
-        _authStore = authStore ?? AuthStore();
+        _authStore = authStore ?? AuthStore(),
+        // Shares the same ApiClient as the rest of AppState (not its own
+        // default instance) so a test/dev ApiClient override actually
+        // covers Media Library calls too.
+        _mediaLibraryService =
+            mediaLibraryService ?? MediaLibraryService(apiClient: apiClient ?? ApiClient());
 
   final ProjectStore _projectStore;
   final ApiClient _apiClient;
   final BrandSettingsStore _brandSettingsStore;
   final AuthStore _authStore;
+  final MediaLibraryService _mediaLibraryService;
 
   // --- Shared church-passcode gate (V2 Decision #1) -----------------------
   // No per-user accounts/sessions: one passcode, checked against the
@@ -91,6 +101,120 @@ class AppState extends ChangeNotifier {
     isUnlocked = false;
     await _authStore.setUnlocked(false);
     notifyListeners();
+  }
+
+  // --- Media Library (V2 Decision #2) --------------------------------------
+  // Folders + video assets independent of any one project, so the same
+  // upload can start more than one project (see
+  // [useLibraryAssetAsProject]) — real backend entity, not a mock.
+
+  List<LibraryFolder> libraryFolders = [];
+  List<LibraryAsset> libraryAssets = [];
+  int libraryUsedBytes = 0;
+  int libraryLimitBytes = 0;
+  bool isLoadingLibrary = false;
+  bool isUploadingLibraryAsset = false;
+  String? libraryError;
+
+  /// Loads folders, assets, and the quota summary — call when the Media
+  /// Library screen first mounts.
+  Future<void> loadLibrary() async {
+    isLoadingLibrary = true;
+    libraryError = null;
+    notifyListeners();
+    try {
+      libraryFolders = await _mediaLibraryService.listFolders();
+      libraryAssets = await _mediaLibraryService.listAssets();
+      final quota = await _mediaLibraryService.getQuota();
+      libraryUsedBytes = quota.usedBytes;
+      libraryLimitBytes = quota.limitBytes;
+    } catch (e) {
+      libraryError = e.toString();
+    } finally {
+      isLoadingLibrary = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> createLibraryFolder(String name) async {
+    try {
+      final folder = await _mediaLibraryService.createFolder(name);
+      libraryFolders = [...libraryFolders, folder];
+    } catch (e) {
+      libraryError = e.toString();
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteLibraryFolder(String id) async {
+    try {
+      await _mediaLibraryService.deleteFolder(id);
+      libraryFolders = libraryFolders.where((f) => f.id != id).toList();
+      // Assets in the deleted folder move to root server-side — mirror
+      // that locally instead of re-fetching.
+      libraryAssets = libraryAssets
+          .map((a) => a.folderId == id ? a.copyWithFolderId(null) : a)
+          .toList();
+    } catch (e) {
+      libraryError = e.toString();
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  Future<void> uploadLibraryAsset(Uint8List bytes, String filename, {String? folderId}) async {
+    isUploadingLibraryAsset = true;
+    libraryError = null;
+    notifyListeners();
+    try {
+      final asset = await _mediaLibraryService.uploadAsset(
+        bytes: bytes,
+        filename: filename,
+        folderId: folderId,
+      );
+      libraryAssets = [...libraryAssets, asset];
+      libraryUsedBytes += asset.sizeBytes;
+    } catch (e) {
+      libraryError = e.toString();
+    } finally {
+      isUploadingLibraryAsset = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteLibraryAsset(String id) async {
+    try {
+      await _mediaLibraryService.deleteAsset(id);
+      final removed = libraryAssets.where((a) => a.id == id).toList();
+      libraryAssets = libraryAssets.where((a) => a.id != id).toList();
+      if (removed.isNotEmpty) libraryUsedBytes -= removed.first.sizeBytes;
+    } catch (e) {
+      libraryError = e.toString();
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  /// Starts a fresh project from a library asset (server-side copy — see
+  /// backend/app/routers/library.py's `/use` endpoint) and makes it the
+  /// active project, same as picking a file in the Import screen.
+  Future<VideoProject> useLibraryAssetAsProject(String assetId) async {
+    final json = await _mediaLibraryService.useAssetAsProject(assetId);
+    final durationMs = (json['durationMs'] as num?)?.toInt();
+    final project = VideoProject(
+      id: json['id'] as String,
+      fileName: json['original_filename'] as String? ?? 'asset',
+      backendProjectId: json['id'] as String,
+      rawDuration: Duration(milliseconds: durationMs ?? 0),
+      processedDuration: Duration(milliseconds: durationMs ?? 0),
+      width: (json['width'] as num?)?.toInt() ?? 0,
+      height: (json['height'] as num?)?.toInt() ?? 0,
+      importedAt: DateTime.now(),
+      status: ProjectStatus.ready,
+    );
+    startImport(project);
+    return project;
   }
 
   VideoProject? project;

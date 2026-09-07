@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../main.dart';
 import '../screens/ai_clips_screen.dart';
+import '../screens/media_library_desktop_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/video_editor_desktop_screen.dart';
 import '../theme/lux_theme.dart';
@@ -14,15 +15,16 @@ import 'phone_shell.dart';
 /// to a wide content pane, replacing [BottomNavScaffold] once the window is
 /// at least [Breakpoints.desktop] wide.
 ///
-/// Editor has its own desktop-shaped widget tree ([VideoEditorDesktopScreen],
-/// Phase 26) sharing [AppState] with the mobile [VideoEditorScreen] via
-/// [VideoScrubMixin]. AI Highlights and Settings reuse the existing mobile
-/// screens as-is for now (own desktop-shaped versions land in Phases
-/// 28/31) — shown at their original phone-shell width, centered in the wide
-/// pane, rather than stretched full-width. Media Library, Subtitles, and
-/// Exports don't exist as features at all yet — each needs its own backend
-/// entity per the V2 decisions — so they show a placeholder until their own
-/// functionality phase (27/29/30) builds them for real.
+/// Editor ([VideoEditorDesktopScreen], Phase 26) and Media Library
+/// ([MediaLibraryDesktopScreen], Phase 27) have their own desktop-shaped
+/// widget trees, both sharing [AppState] with the rest of the app. AI
+/// Highlights and Settings reuse the existing mobile screens as-is for now
+/// (own desktop-shaped versions land in Phases 28/31) — shown at their
+/// original phone-shell width, centered in the wide pane, rather than
+/// stretched full-width. Subtitles and Exports don't exist as features at
+/// all yet — each needs its own backend entity per the V2 decisions — so
+/// they show a placeholder until their own functionality phase (29/30)
+/// builds them for real.
 class DesktopShellScaffold extends StatefulWidget {
   const DesktopShellScaffold({super.key});
 
@@ -66,11 +68,7 @@ class _DesktopShellScaffoldState extends State<DesktopShellScaffold> {
               index: _index,
               children: const [
                 VideoEditorDesktopScreen(),
-                _ComingSoonPane(
-                  icon: PhosphorIcons.stackBold,
-                  title: 'Media Library',
-                  phaseNote: 'Lands in Phase 27, once the backend has a real asset-library entity.',
-                ),
+                MediaLibraryDesktopScreen(),
                 PhoneShell(child: AiClipsScreen()),
                 _ComingSoonPane(
                   icon: PhosphorIcons.textTBold,

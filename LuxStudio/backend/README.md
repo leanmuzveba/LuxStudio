@@ -49,6 +49,11 @@ default backend base URL in dev.
 - `POST /projects` — multipart upload (`file`), creates a project folder and
   stores the source video.
 - `GET /projects/{project_id}` — returns the project's `meta.json`.
+- `/library/*` — the Media Library (folders, video assets, storage quota),
+  independent of any one project. `POST /library/assets/{id}/use` copies a
+  library asset into a new project, the "cross-project reuse" bridge — see
+  `app/routers/library.py`'s module docstring for why this isn't a deeper
+  assets-by-reference rewrite.
 
 See `app/routers/` for the rest (analyse pipeline, social copy, exports,
 brand logo) — this list is not kept fully current.

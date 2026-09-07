@@ -29,6 +29,25 @@ class ApiClient {
     return _decodeObject(response);
   }
 
+  Future<List<dynamic>> getJsonList(String path) async {
+    final response = await _client.get(_uri(path));
+    if (response.statusCode >= 400) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) {
+      throw FormatException('Expected a JSON array, got: $decoded');
+    }
+    return decoded;
+  }
+
+  Future<void> delete(String path) async {
+    final response = await _client.delete(_uri(path));
+    if (response.statusCode >= 400) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
   Future<Map<String, dynamic>> postJson(String path, Map<String, dynamic> body) async {
     final response = await _client.post(
       _uri(path),
@@ -45,9 +64,11 @@ class ApiClient {
     required String fieldName,
     required Uint8List bytes,
     required String filename,
+    Map<String, String>? fields,
   }) async {
     final request = http.MultipartRequest('POST', _uri(path))
       ..files.add(http.MultipartFile.fromBytes(fieldName, bytes, filename: filename));
+    if (fields != null) request.fields.addAll(fields);
     final streamed = await _client.send(request);
     final response = await http.Response.fromStream(streamed);
     return _decodeObject(response);

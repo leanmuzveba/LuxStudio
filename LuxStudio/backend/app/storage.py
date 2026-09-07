@@ -57,6 +57,26 @@ def create_project(original_filename: str) -> dict[str, Any]:
     return meta
 
 
+def library_dir() -> Path:
+    """Root of the Media Library (V2 Decision #2) — folders.json/assets.json
+    index files plus assets/<id><ext> video files, all independent of any
+    one project's storage/<id>/ folder."""
+    d = get_settings().storage_dir / "_library"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def read_library_index(name: str) -> list[dict[str, Any]]:
+    path = library_dir() / f"{name}.json"
+    if not path.exists():
+        return []
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_library_index(name: str, items: list[dict[str, Any]]) -> None:
+    (library_dir() / f"{name}.json").write_text(json.dumps(items, indent=2), encoding="utf-8")
+
+
 def touch(project_id: str) -> None:
     meta = read_meta(project_id)
     if meta is not None:
