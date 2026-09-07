@@ -12,6 +12,7 @@ import '../models/social_copy.dart';
 import '../models/transcript_segment.dart';
 import '../models/video_project.dart';
 import '../services/api_client.dart';
+import '../services/auth_store.dart';
 import '../services/brand_settings_store.dart';
 import '../services/project_store.dart';
 
@@ -31,13 +32,66 @@ class AppState extends ChangeNotifier {
     ProjectStore? projectStore,
     ApiClient? apiClient,
     BrandSettingsStore? brandSettingsStore,
+    AuthStore? authStore,
   })  : _projectStore = projectStore ?? ProjectStore(),
         _apiClient = apiClient ?? ApiClient(),
-        _brandSettingsStore = brandSettingsStore ?? BrandSettingsStore();
+        _brandSettingsStore = brandSettingsStore ?? BrandSettingsStore(),
+        _authStore = authStore ?? AuthStore();
 
   final ProjectStore _projectStore;
   final ApiClient _apiClient;
   final BrandSettingsStore _brandSettingsStore;
+  final AuthStore _authStore;
+
+  // --- Shared church-passcode gate (V2 Decision #1) -----------------------
+  // No per-user accounts/sessions: one passcode, checked against the
+  // backend's /auth/verify, remembered locally via [AuthStore] once this
+  // device passes it. See lib/screens/login_screen.dart.
+
+  bool isUnlocked = false;
+  bool isVerifyingPasscode = false;
+  String? passcodeError;
+
+  /// Loads whether this device already unlocked the app — call once at
+  /// startup (see main.dart) before deciding whether to show the login
+  /// screen.
+  Future<void> loadAuthStatus() async {
+    isUnlocked = await _authStore.isUnlocked();
+    notifyListeners();
+  }
+
+  /// Checks [passcode] against the backend's shared church passcode.
+  /// Returns whether it succeeded; [passcodeError] carries a message for
+  /// the login screen to show on failure.
+  Future<bool> verifyPasscode(String passcode) async {
+    isVerifyingPasscode = true;
+    passcodeError = null;
+    notifyListeners();
+    try {
+      await _apiClient.postJson('/auth/verify', {'passcode': passcode});
+      isUnlocked = true;
+      await _authStore.setUnlocked(true);
+      return true;
+    } on ApiException catch (e) {
+      passcodeError = e.statusCode == 401
+          ? 'Incorrect passcode.'
+          : "Couldn't reach the studio server.";
+      return false;
+    } catch (_) {
+      passcodeError = "Couldn't reach the studio server.";
+      return false;
+    } finally {
+      isVerifyingPasscode = false;
+      notifyListeners();
+    }
+  }
+
+  /// Re-locks the app on this device — offered from Settings.
+  Future<void> signOut() async {
+    isUnlocked = false;
+    await _authStore.setUnlocked(false);
+    notifyListeners();
+  }
 
   VideoProject? project;
 

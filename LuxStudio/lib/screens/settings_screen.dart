@@ -397,6 +397,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ],
                 ),
+                const SizedBox(height: 16),
+                _SettingsCard(
+                  icon: Icons.lock_outline_rounded,
+                  title: 'Session',
+                  subtitle: 'This device stays signed in with the shared church passcode until you sign out.',
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => appState.signOut(),
+                      icon: const Icon(Icons.logout_rounded, size: 16),
+                      label: const Text('Sign Out'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: LuxColors.error,
+                        side: const BorderSide(color: LuxColors.border),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        minimumSize: const Size.fromHeight(44),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
     );

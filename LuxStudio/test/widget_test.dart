@@ -36,10 +36,26 @@ ApiClient buildTestApiClient() {
     if (request.method == 'GET' && path.endsWith('/analyse/status')) {
       return _jsonResponse({'status': 'done', 'step': 'captioning', 'percent': 100, 'error': null});
     }
+    if (request.method == 'POST' && path == '/auth/verify') {
+      final bytes = await bodyStream.expand((chunk) => chunk).toList();
+      final body = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+      if (body['passcode'] == _testPasscode) {
+        return _jsonResponse({'ok': true});
+      }
+      return http.StreamedResponse(
+        Stream.value(utf8.encode(jsonEncode({'detail': 'Incorrect passcode'}))),
+        401,
+        headers: {'content-type': 'application/json'},
+      );
+    }
     return http.StreamedResponse(Stream.value(utf8.encode('{}')), 200);
   });
   return ApiClient(httpClient: mockClient);
 }
+
+/// The fake backend's one accepted passcode — see [buildTestApiClient]'s
+/// `/auth/verify` handling.
+const _testPasscode = 'letmein';
 
 http.StreamedResponse _jsonResponse(Map<String, dynamic> body) => http.StreamedResponse(
       Stream.value(utf8.encode(jsonEncode(body))),
@@ -49,8 +65,17 @@ http.StreamedResponse _jsonResponse(Map<String, dynamic> body) => http.StreamedR
 
 /// A fresh [AppState] backed by an in-memory (mocked) `shared_preferences`
 /// store, so tests never touch real browser/platform storage, and a fake
-/// [ApiClient] so no real backend call is made.
+/// [ApiClient] so no real backend call is made. Pre-unlocked (past the
+/// passcode gate) by default, since most tests exercise the app past
+/// login — see [buildLockedTestAppState] for tests of the gate itself.
 AppState buildTestAppState() {
+  SharedPreferences.setMockInitialValues({'auth_unlocked': true});
+  return AppState(apiClient: buildTestApiClient());
+}
+
+/// Same as [buildTestAppState] but starting locked, for tests of
+/// [LoginScreen] itself.
+AppState buildLockedTestAppState() {
   SharedPreferences.setMockInitialValues({});
   return AppState(apiClient: buildTestApiClient());
 }
@@ -139,6 +164,34 @@ void main() {
 
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
     expect(app.theme?.brightness, Brightness.dark);
+  });
+
+  testWidgets('A locked device shows the passcode gate instead of Home', (tester) async {
+    await pumpApp(tester, buildLockedTestAppState());
+
+    expect(find.text('UNLOCK STUDIO'), findsOneWidget);
+    expect(find.text('New Sermon Project'), findsNothing);
+  });
+
+  testWidgets('An incorrect passcode shows an error and stays locked', (tester) async {
+    await pumpApp(tester, buildLockedTestAppState());
+
+    await tester.enterText(find.byType(TextField), 'wrong');
+    await tester.tap(find.text('UNLOCK STUDIO'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Incorrect passcode.'), findsOneWidget);
+    expect(find.text('New Sermon Project'), findsNothing);
+  });
+
+  testWidgets('The correct passcode unlocks straight into Home', (tester) async {
+    await pumpApp(tester, buildLockedTestAppState());
+
+    await tester.enterText(find.byType(TextField), 'letmein');
+    await tester.tap(find.text('UNLOCK STUDIO'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('New Sermon Project'), findsOneWidget);
   });
 
   testWidgets('A desktop-wide window shows the sidebar shell instead of the bottom nav', (tester) async {

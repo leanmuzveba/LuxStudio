@@ -25,6 +25,7 @@ Create a `.env` file (or set real environment variables) in `backend/`:
 
 ```
 GEMINI_API_KEY=your-key-here
+CHURCH_PASSCODE=your-shared-passcode-here
 # Optional overrides:
 # STORAGE_DIR=./storage
 # TTL_HOURS=48
@@ -43,8 +44,11 @@ default backend base URL in dev.
 ## Endpoints so far
 
 - `GET /health` — liveness check.
+- `POST /auth/verify` — checks a passcode against `CHURCH_PASSCODE` (single
+  shared church passcode, no user table/sessions). 503 if unconfigured.
 - `POST /projects` — multipart upload (`file`), creates a project folder and
   stores the source video.
 - `GET /projects/{project_id}` — returns the project's `meta.json`.
 
-Gemini and FFmpeg endpoints land in Phases 2-3.
+See `app/routers/` for the rest (analyse pipeline, social copy, exports,
+brand logo) — this list is not kept fully current.

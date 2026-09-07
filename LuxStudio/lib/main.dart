@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'screens/ai_clips_screen.dart';
 import 'screens/analyse_screen.dart';
 import 'screens/import_screen.dart';
+import 'screens/login_screen.dart';
 import 'screens/share_screen.dart';
 import 'screens/video_editor_screen.dart';
 import 'services/media_import_service.dart';
@@ -38,6 +39,7 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
   late final MediaImportService mediaImportService =
       widget._injectedMediaImportService ?? MediaImportService();
   bool _checkedRecovery = false;
+  bool _checkedAuth = false;
 
   @override
   void initState() {
@@ -47,6 +49,12 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
     // ProjectStore's doc for why this never throws.
     appState.tryRecoverLastProject().whenComplete(() {
       if (mounted) setState(() => _checkedRecovery = true);
+    });
+    // Whether this device already passed the shared church-passcode gate
+    // (see AppState.loadAuthStatus/LoginScreen) — checked in parallel with
+    // recovery, both gate leaving the splash screen below.
+    appState.loadAuthStatus().whenComplete(() {
+      if (mounted) setState(() => _checkedAuth = true);
     });
     appState.reloadBrandSettings();
   }
@@ -74,7 +82,18 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
         // platform-decision note) via [PhoneShell], applied per-route below
         // rather than once here, so it doesn't also squeeze the desktop
         // shell. See PIVOT_PLAN_V2.md Phase 24.
-        home: !_checkedRecovery ? const _SplashScreen() : const _ResponsiveHome(),
+        //
+        // Below the splash gate, an [AnimatedBuilder] on [appState] picks
+        // [LoginScreen] vs [_ResponsiveHome] by [AppState.isUnlocked] so a
+        // successful passcode check swaps straight to the app with no
+        // navigation call needed (see PIVOT_PLAN_V2.md Phase 25).
+        home: !_checkedRecovery || !_checkedAuth
+            ? const _SplashScreen()
+            : AnimatedBuilder(
+                animation: appState,
+                builder: (context, _) =>
+                    appState.isUnlocked ? const _ResponsiveHome() : const LoginScreen(),
+              ),
         routes: {
           AppRoutes.import: (_) => PhoneShell(child: ImportScreen(mediaImportService: mediaImportService)),
           AppRoutes.analyse: (_) => const PhoneShell(child: AnalyseScreen()),
@@ -87,15 +106,37 @@ class _LuxStudioAppState extends State<LuxStudioApp> {
   }
 }
 
-/// Shown briefly on launch while [AppState.tryRecoverLastProject] checks
-/// for a project to resume.
+/// Shown briefly on launch while [AppState.tryRecoverLastProject] and
+/// [AppState.loadAuthStatus] both resolve — matches `ui_kit/auth/index.html`
+/// and `auth_desktop/index.html`'s splash panel (logo + wordmark + loader).
 class _SplashScreen extends StatelessWidget {
   const _SplashScreen();
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+    return Scaffold(
+      backgroundColor: LuxColors.background,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/branding/icon.png', width: 72, height: 72),
+            const SizedBox(height: 18),
+            RichText(
+              text: TextSpan(children: [
+                TextSpan(text: 'Lux', style: LuxText.sora(size: 32, color: LuxColors.textPrimary)),
+                TextSpan(text: 'Studio', style: LuxText.sora(size: 32, color: LuxColors.gold)),
+              ]),
+            ),
+            const SizedBox(height: 36),
+            const SizedBox(
+              width: 26,
+              height: 26,
+              child: CircularProgressIndicator(strokeWidth: 2.5, color: LuxColors.gold),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

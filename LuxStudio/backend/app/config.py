@@ -16,6 +16,10 @@ BACKEND_ROOT = Path(__file__).resolve().parent.parent
 class Settings:
     def __init__(self) -> None:
         self.gemini_api_key: str | None = os.environ.get("GEMINI_API_KEY")
+        # Single shared church passcode (V2 Decision #1 — no per-user
+        # accounts/sessions). Unset disables /auth/verify entirely rather
+        # than accepting any passcode.
+        self.church_passcode: str | None = os.environ.get("CHURCH_PASSCODE")
         self.storage_dir: Path = Path(
             os.environ.get("STORAGE_DIR", str(BACKEND_ROOT / "storage"))
         ).resolve()
