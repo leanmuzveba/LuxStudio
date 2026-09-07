@@ -286,4 +286,54 @@ void main() {
     expect(find.text('sermon.mp4'), findsOneWidget);
     expect(find.text('No media yet — upload a sermon video to get started.'), findsNothing);
   });
+
+  testWidgets('Desktop AI Highlights shows real clips grouped into reels by category', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final appState = buildTestAppState();
+    appState.startImport(VideoProject(
+      id: 'p1',
+      fileName: 'sermon.mp4',
+      backendProjectId: 'test-project-id',
+      rawDuration: const Duration(minutes: 30),
+      processedDuration: const Duration(minutes: 28),
+      width: 1080,
+      height: 1920,
+      importedAt: DateTime(2026, 1, 1),
+    ));
+    appState.suggestedClips.addAll([
+      AiClip(
+        id: 'c1',
+        title: 'The Walk of Faith Metaphor',
+        start: const Duration(minutes: 12, seconds: 15),
+        end: const Duration(minutes: 13, seconds: 7),
+        viralScore: 92,
+        reason: 'Strong emotional hook',
+        category: 'Strong Hooks',
+      ),
+      AiClip(
+        id: 'c2',
+        title: 'The Community Effect',
+        start: const Duration(minutes: 5, seconds: 10),
+        end: const Duration(minutes: 5, seconds: 45),
+        viralScore: 88,
+        reason: 'Trending topic reference',
+        category: 'Trending Topic',
+      ),
+    ]);
+
+    await pumpApp(tester, appState);
+
+    await tester.tap(find.text('AI Highlights'));
+    await tester.pump();
+
+    expect(find.text('Detected Viral Segments'), findsOneWidget);
+    expect(find.text('The Walk of Faith Metaphor'), findsOneWidget);
+    expect(find.text('The Community Effect'), findsOneWidget);
+    expect(find.text('Strong Hooks'), findsOneWidget);
+    expect(find.text('Trending Topic'), findsOneWidget);
+    expect(find.text('2 clips found'), findsOneWidget);
+  });
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../main.dart';
-import '../screens/ai_clips_screen.dart';
+import '../screens/ai_highlights_desktop_screen.dart';
 import '../screens/media_library_desktop_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/video_editor_desktop_screen.dart';
@@ -15,16 +15,16 @@ import 'phone_shell.dart';
 /// to a wide content pane, replacing [BottomNavScaffold] once the window is
 /// at least [Breakpoints.desktop] wide.
 ///
-/// Editor ([VideoEditorDesktopScreen], Phase 26) and Media Library
-/// ([MediaLibraryDesktopScreen], Phase 27) have their own desktop-shaped
-/// widget trees, both sharing [AppState] with the rest of the app. AI
-/// Highlights and Settings reuse the existing mobile screens as-is for now
-/// (own desktop-shaped versions land in Phases 28/31) — shown at their
-/// original phone-shell width, centered in the wide pane, rather than
-/// stretched full-width. Subtitles and Exports don't exist as features at
-/// all yet — each needs its own backend entity per the V2 decisions — so
-/// they show a placeholder until their own functionality phase (29/30)
-/// builds them for real.
+/// Editor ([VideoEditorDesktopScreen], Phase 26), Media Library
+/// ([MediaLibraryDesktopScreen], Phase 27), and AI Highlights
+/// ([AiHighlightsDesktopScreen], Phase 28) have their own desktop-shaped
+/// widget trees, all sharing [AppState] with the rest of the app. Settings
+/// reuses the existing mobile screen as-is for now (own desktop-shaped
+/// version lands in Phase 31) — shown at its original phone-shell width,
+/// centered in the wide pane, rather than stretched full-width. Subtitles
+/// and Exports don't exist as features at all yet — each needs its own
+/// backend entity per the V2 decisions — so they show a placeholder until
+/// their own functionality phase (29/30) builds them for real.
 class DesktopShellScaffold extends StatefulWidget {
   const DesktopShellScaffold({super.key});
 
@@ -69,7 +69,7 @@ class _DesktopShellScaffoldState extends State<DesktopShellScaffold> {
               children: const [
                 VideoEditorDesktopScreen(),
                 MediaLibraryDesktopScreen(),
-                PhoneShell(child: AiClipsScreen()),
+                AiHighlightsDesktopScreen(),
                 _ComingSoonPane(
                   icon: PhosphorIcons.textTBold,
                   title: 'Subtitles',
