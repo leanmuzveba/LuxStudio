@@ -77,6 +77,28 @@ def write_library_index(name: str, items: list[dict[str, Any]]) -> None:
     (library_dir() / f"{name}.json").write_text(json.dumps(items, indent=2), encoding="utf-8")
 
 
+def exports_dir() -> Path:
+    """Root of the export history store (V2 Decision #3) — a persistent
+    copy of every completed export plus a history.json index, independent
+    of any project's storage/<id>/ folder (which the TTL sweep can delete).
+    This is what "scoped above individual projects" buys: exports survive
+    the project they came from being swept."""
+    d = get_settings().storage_dir / "_exports"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def read_export_history() -> list[dict[str, Any]]:
+    path = exports_dir() / "history.json"
+    if not path.exists():
+        return []
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_export_history(items: list[dict[str, Any]]) -> None:
+    (exports_dir() / "history.json").write_text(json.dumps(items, indent=2), encoding="utf-8")
+
+
 def touch(project_id: str) -> None:
     meta = read_meta(project_id)
     if meta is not None:

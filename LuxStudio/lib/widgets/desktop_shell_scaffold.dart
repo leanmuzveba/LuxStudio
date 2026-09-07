@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../main.dart';
 import '../screens/ai_highlights_desktop_screen.dart';
+import '../screens/exports_desktop_screen.dart';
 import '../screens/media_library_desktop_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/subtitles_desktop_screen.dart';
@@ -18,15 +19,13 @@ import 'phone_shell.dart';
 ///
 /// Editor ([VideoEditorDesktopScreen], Phase 26), Media Library
 /// ([MediaLibraryDesktopScreen], Phase 27), AI Highlights
-/// ([AiHighlightsDesktopScreen], Phase 28), and Subtitles
-/// ([SubtitlesDesktopScreen], Phase 29) have their own desktop-shaped
-/// widget trees, all sharing [AppState] with the rest of the app. Settings
-/// reuses the existing mobile screen as-is for now (own desktop-shaped
-/// version lands in Phase 31) — shown at its original phone-shell width,
-/// centered in the wide pane, rather than stretched full-width. Exports
-/// doesn't exist as a feature at all yet — needs its own backend entity per
-/// the V2 decisions — so it shows a placeholder until Phase 30 builds it
-/// for real.
+/// ([AiHighlightsDesktopScreen], Phase 28), Subtitles
+/// ([SubtitlesDesktopScreen], Phase 29), and Exports
+/// ([ExportsDesktopScreen], Phase 30) have their own desktop-shaped widget
+/// trees, all sharing [AppState] with the rest of the app. Settings reuses
+/// the existing mobile screen as-is for now (own desktop-shaped version
+/// lands in Phase 31) — shown at its original phone-shell width, centered
+/// in the wide pane, rather than stretched full-width.
 class DesktopShellScaffold extends StatefulWidget {
   const DesktopShellScaffold({super.key});
 
@@ -73,11 +72,7 @@ class _DesktopShellScaffoldState extends State<DesktopShellScaffold> {
                 MediaLibraryDesktopScreen(),
                 AiHighlightsDesktopScreen(),
                 SubtitlesDesktopScreen(),
-                _ComingSoonPane(
-                  icon: PhosphorIcons.exportBold,
-                  title: 'Exports',
-                  phaseNote: 'Lands in Phase 30, with a real export history/queue.',
-                ),
+                ExportsDesktopScreen(),
                 PhoneShell(child: SettingsScreen()),
               ],
             ),
@@ -253,40 +248,6 @@ class _SidebarItem extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: LuxText.manrope(size: 14, weight: FontWeight.w600, color: color),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ComingSoonPane extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String phaseNote;
-
-  const _ComingSoonPane({required this.icon, required this.title, required this.phaseNote});
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: LuxColors.background,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 40, color: LuxColors.borderStrong),
-              const SizedBox(height: 16),
-              Text(title, style: LuxText.sora(size: 20, weight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              Text(
-                phaseNote,
-                textAlign: TextAlign.center,
-                style: LuxText.manrope(size: 13.5, color: LuxColors.textSecondary),
               ),
             ],
           ),

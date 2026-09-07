@@ -7,6 +7,7 @@ import '../models/ai_clip.dart';
 import '../models/brand_settings.dart';
 import '../models/caption_style.dart';
 import '../models/export_destination.dart';
+import '../models/export_history_entry.dart';
 import '../models/library_asset.dart';
 import '../models/library_folder.dart';
 import '../models/silence_range.dart';
@@ -16,6 +17,7 @@ import '../models/video_project.dart';
 import '../services/api_client.dart';
 import '../services/auth_store.dart';
 import '../services/brand_settings_store.dart';
+import '../services/export_history_service.dart';
 import '../services/media_library_service.dart';
 import '../services/project_store.dart';
 
@@ -37,21 +39,25 @@ class AppState extends ChangeNotifier {
     BrandSettingsStore? brandSettingsStore,
     AuthStore? authStore,
     MediaLibraryService? mediaLibraryService,
+    ExportHistoryService? exportHistoryService,
   })  : _projectStore = projectStore ?? ProjectStore(),
         _apiClient = apiClient ?? ApiClient(),
         _brandSettingsStore = brandSettingsStore ?? BrandSettingsStore(),
         _authStore = authStore ?? AuthStore(),
         // Shares the same ApiClient as the rest of AppState (not its own
         // default instance) so a test/dev ApiClient override actually
-        // covers Media Library calls too.
+        // covers Media Library/export-history calls too.
         _mediaLibraryService =
-            mediaLibraryService ?? MediaLibraryService(apiClient: apiClient ?? ApiClient());
+            mediaLibraryService ?? MediaLibraryService(apiClient: apiClient ?? ApiClient()),
+        _exportHistoryService =
+            exportHistoryService ?? ExportHistoryService(apiClient: apiClient ?? ApiClient());
 
   final ProjectStore _projectStore;
   final ApiClient _apiClient;
   final BrandSettingsStore _brandSettingsStore;
   final AuthStore _authStore;
   final MediaLibraryService _mediaLibraryService;
+  final ExportHistoryService _exportHistoryService;
 
   // --- Shared church-passcode gate (V2 Decision #1) -----------------------
   // No per-user accounts/sessions: one passcode, checked against the
@@ -215,6 +221,43 @@ class AppState extends ChangeNotifier {
     );
     startImport(project);
     return project;
+  }
+
+  // --- Export history (V2 Decision #3) -------------------------------------
+  // Real history of completed/failed exports, independent of any one
+  // project (survives that project being TTL-swept — see
+  // backend/app/routers/exports.py). There's no real server-side render
+  // queue/progress to mirror here (export is one synchronous call, not
+  // concurrent jobs) — [isExportingClip] below already tracks the one
+  // possible in-flight export.
+
+  List<ExportHistoryEntry> exportHistory = [];
+  bool isLoadingExportHistory = false;
+  String? exportHistoryError;
+
+  Future<void> loadExportHistory() async {
+    isLoadingExportHistory = true;
+    exportHistoryError = null;
+    notifyListeners();
+    try {
+      exportHistory = await _exportHistoryService.list();
+    } catch (e) {
+      exportHistoryError = e.toString();
+    } finally {
+      isLoadingExportHistory = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteExportHistoryEntry(String id) async {
+    try {
+      await _exportHistoryService.delete(id);
+      exportHistory = exportHistory.where((e) => e.id != id).toList();
+    } catch (e) {
+      exportHistoryError = e.toString();
+    } finally {
+      notifyListeners();
+    }
   }
 
   VideoProject? project;
@@ -528,6 +571,11 @@ class AppState extends ChangeNotifier {
         if (subtitlesSrt != null) 'force_style': captionStyle.assForceStyle,
         if (lowerThirdText != null) 'lower_third_text': lowerThirdText,
         if (logoBase64 != null) 'logo_base64': logoBase64,
+        // The backend only ever knows the upload's original filename —
+        // this is the user-facing title (editable, defaults to the
+        // filename minus extension) for the export history entry it
+        // records (see backend/app/routers/exports.py, V2 Decision #3).
+        'project_title': currentProject.title,
       },
     );
 

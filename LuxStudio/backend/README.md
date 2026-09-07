@@ -54,6 +54,11 @@ default backend base URL in dev.
   library asset into a new project, the "cross-project reuse" bridge — see
   `app/routers/library.py`'s module docstring for why this isn't a deeper
   assets-by-reference rewrite.
+- `/exports/history*` — export history (list/download/delete), independent
+  of any one project. `POST /projects/{id}/clips/{clip_id}/export` records
+  an entry here (success or failure) and, on success, copies the rendered
+  file into `storage.exports_dir()` so it survives the source project being
+  TTL-swept — see `app/routers/exports.py`'s module docstring.
 
-See `app/routers/` for the rest (analyse pipeline, social copy, exports,
-brand logo) — this list is not kept fully current.
+See `app/routers/` for the rest (analyse pipeline, social copy, brand
+logo) — this list is not kept fully current.

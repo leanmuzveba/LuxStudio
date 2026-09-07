@@ -72,6 +72,21 @@ ApiClient buildTestApiClient() {
     if (request.method == 'GET' && path == '/library/quota') {
       return _jsonResponse({'used_bytes': 1048576, 'limit_bytes': 21474836480});
     }
+    if (request.method == 'GET' && path == '/exports/history') {
+      return _jsonListResponse([
+        {
+          'id': 'e1',
+          'status': 'done',
+          'projectTitle': 'Sunday Sermon',
+          'clipTitle': 'The Walk of Faith',
+          'durationMs': 42000,
+          'sizeBytes': 5242880,
+          'error': null,
+          'createdAt': DateTime(2026, 1, 1).toIso8601String(),
+          'downloadUrl': '/exports/history/e1/download',
+        },
+      ]);
+    }
     return http.StreamedResponse(Stream.value(utf8.encode('{}')), 200);
   });
   return ApiClient(httpClient: mockClient);
@@ -374,5 +389,27 @@ void main() {
     await tester.pump();
 
     expect(appState.captionStyle.italic, isTrue);
+  });
+
+  testWidgets('Desktop Exports shows the real export history from the backend', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final appState = buildTestAppState();
+
+    await pumpApp(tester, appState);
+
+    await tester.tap(find.text('Exports'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('The Walk of Faith'), findsOneWidget);
+    expect(find.textContaining('Sunday Sermon'), findsOneWidget);
+    expect(find.text('SUCCESS'), findsOneWidget);
+    expect(
+      find.text('No exports yet — export a clip from the Editor, AI Highlights, or Share to see it here.'),
+      findsNothing,
+    );
   });
 }
