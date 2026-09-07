@@ -4,12 +4,11 @@ import '../main.dart';
 import '../screens/ai_highlights_desktop_screen.dart';
 import '../screens/exports_desktop_screen.dart';
 import '../screens/media_library_desktop_screen.dart';
-import '../screens/settings_screen.dart';
+import '../screens/settings_desktop_screen.dart';
 import '../screens/subtitles_desktop_screen.dart';
 import '../screens/video_editor_desktop_screen.dart';
 import '../theme/lux_theme.dart';
 import '../theme/phosphor_icons.dart';
-import 'phone_shell.dart';
 
 /// The desktop-viewport root shell (see PIVOT_PLAN_V2.md Phase 24): a fixed
 /// 256px sidebar (logo, 5 nav destinations, a pinned Settings entry, and a
@@ -20,12 +19,10 @@ import 'phone_shell.dart';
 /// Editor ([VideoEditorDesktopScreen], Phase 26), Media Library
 /// ([MediaLibraryDesktopScreen], Phase 27), AI Highlights
 /// ([AiHighlightsDesktopScreen], Phase 28), Subtitles
-/// ([SubtitlesDesktopScreen], Phase 29), and Exports
-/// ([ExportsDesktopScreen], Phase 30) have their own desktop-shaped widget
-/// trees, all sharing [AppState] with the rest of the app. Settings reuses
-/// the existing mobile screen as-is for now (own desktop-shaped version
-/// lands in Phase 31) — shown at its original phone-shell width, centered
-/// in the wide pane, rather than stretched full-width.
+/// ([SubtitlesDesktopScreen], Phase 29), Exports
+/// ([ExportsDesktopScreen], Phase 30), and Settings
+/// ([SettingsDesktopScreen], Phase 31) all have their own desktop-shaped
+/// widget trees, sharing [AppState] with the rest of the app.
 class DesktopShellScaffold extends StatefulWidget {
   const DesktopShellScaffold({super.key});
 
@@ -73,7 +70,7 @@ class _DesktopShellScaffoldState extends State<DesktopShellScaffold> {
                 AiHighlightsDesktopScreen(),
                 SubtitlesDesktopScreen(),
                 ExportsDesktopScreen(),
-                PhoneShell(child: SettingsScreen()),
+                SettingsDesktopScreen(),
               ],
             ),
           ),

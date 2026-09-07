@@ -412,4 +412,31 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('Desktop Settings shows the real seeded church settings and switches sections', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await pumpApp(tester, buildTestAppState());
+
+    // The sidebar's pinned "Settings" entry (distinct from a nav item of
+    // the same label that only exists inside the settings pane itself).
+    await tester.tap(find.text('Settings'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Defaults to the first section, Church Profile, seeded from
+    // BrandSettings.seeded (no real backend/prefs data in this test). The
+    // left nav always lists every section label, so assert on
+    // section-specific *content*, not the nav labels themselves.
+    expect(find.text('Higherlife Commission'), findsOneWidget);
+    expect(find.text('#wordsofwisdom'), findsNothing);
+
+    await tester.tap(find.text('Default Hashtags'));
+    await tester.pump();
+
+    expect(find.text('#wordsofwisdom'), findsOneWidget);
+    expect(find.text('Higherlife Commission'), findsNothing);
+  });
 }
