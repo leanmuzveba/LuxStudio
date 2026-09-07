@@ -4,6 +4,7 @@ import '../main.dart';
 import '../screens/ai_highlights_desktop_screen.dart';
 import '../screens/media_library_desktop_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/subtitles_desktop_screen.dart';
 import '../screens/video_editor_desktop_screen.dart';
 import '../theme/lux_theme.dart';
 import '../theme/phosphor_icons.dart';
@@ -16,15 +17,16 @@ import 'phone_shell.dart';
 /// at least [Breakpoints.desktop] wide.
 ///
 /// Editor ([VideoEditorDesktopScreen], Phase 26), Media Library
-/// ([MediaLibraryDesktopScreen], Phase 27), and AI Highlights
-/// ([AiHighlightsDesktopScreen], Phase 28) have their own desktop-shaped
+/// ([MediaLibraryDesktopScreen], Phase 27), AI Highlights
+/// ([AiHighlightsDesktopScreen], Phase 28), and Subtitles
+/// ([SubtitlesDesktopScreen], Phase 29) have their own desktop-shaped
 /// widget trees, all sharing [AppState] with the rest of the app. Settings
 /// reuses the existing mobile screen as-is for now (own desktop-shaped
 /// version lands in Phase 31) — shown at its original phone-shell width,
-/// centered in the wide pane, rather than stretched full-width. Subtitles
-/// and Exports don't exist as features at all yet — each needs its own
-/// backend entity per the V2 decisions — so they show a placeholder until
-/// their own functionality phase (29/30) builds them for real.
+/// centered in the wide pane, rather than stretched full-width. Exports
+/// doesn't exist as a feature at all yet — needs its own backend entity per
+/// the V2 decisions — so it shows a placeholder until Phase 30 builds it
+/// for real.
 class DesktopShellScaffold extends StatefulWidget {
   const DesktopShellScaffold({super.key});
 
@@ -70,11 +72,7 @@ class _DesktopShellScaffoldState extends State<DesktopShellScaffold> {
                 VideoEditorDesktopScreen(),
                 MediaLibraryDesktopScreen(),
                 AiHighlightsDesktopScreen(),
-                _ComingSoonPane(
-                  icon: PhosphorIcons.textTBold,
-                  title: 'Subtitles',
-                  phaseNote: 'Lands in Phase 29, with real font/position/timing caption controls.',
-                ),
+                SubtitlesDesktopScreen(),
                 _ComingSoonPane(
                   icon: PhosphorIcons.exportBold,
                   title: 'Exports',

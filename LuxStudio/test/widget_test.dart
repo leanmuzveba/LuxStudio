@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:luxstudio/main.dart';
 import 'package:luxstudio/models/ai_clip.dart';
+import 'package:luxstudio/models/transcript_segment.dart';
 import 'package:luxstudio/models/video_project.dart';
 import 'package:luxstudio/services/api_client.dart';
 import 'package:luxstudio/services/media_import_service.dart';
@@ -335,5 +336,43 @@ void main() {
     expect(find.text('Strong Hooks'), findsOneWidget);
     expect(find.text('Trending Topic'), findsOneWidget);
     expect(find.text('2 clips found'), findsOneWidget);
+  });
+
+  testWidgets('Desktop Subtitles shows the real transcript and edits the real caption style', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final appState = buildTestAppState();
+    appState.startImport(VideoProject(
+      id: 'p1',
+      fileName: 'sermon.mp4',
+      backendProjectId: 'test-project-id',
+      rawDuration: const Duration(minutes: 30),
+      processedDuration: const Duration(minutes: 28),
+      width: 1080,
+      height: 1920,
+      importedAt: DateTime(2026, 1, 1),
+    ));
+    appState.transcript.add(TranscriptSegment(
+      id: 's1',
+      start: Duration.zero,
+      end: const Duration(seconds: 4),
+      text: 'Good morning everyone.',
+    ));
+
+    await pumpApp(tester, appState);
+
+    await tester.tap(find.text('Subtitles'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('Good morning everyone.'), findsWidgets);
+    expect(appState.captionStyle.italic, isFalse);
+
+    await tester.tap(find.byTooltip('Italic'));
+    await tester.pump();
+
+    expect(appState.captionStyle.italic, isTrue);
   });
 }

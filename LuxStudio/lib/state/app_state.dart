@@ -548,12 +548,13 @@ class AppState extends ChangeNotifier {
   }
 
   String _buildSrt(List<TranscriptSegment> segments, Duration clipStart) {
+    final offset = Duration(milliseconds: captionStyle.timingOffsetMs);
     final buffer = StringBuffer();
     var index = 0;
     for (final segment in segments) {
-      final end = segment.end - clipStart;
+      final end = segment.end - clipStart + offset;
       if (end <= Duration.zero) continue;
-      final start = segment.start - clipStart;
+      final start = segment.start - clipStart + offset;
       final clampedStart = start < Duration.zero ? Duration.zero : start;
       index++;
       buffer
