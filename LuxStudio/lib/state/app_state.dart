@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/ai_clip.dart';
 import '../models/brand_settings.dart';
@@ -430,6 +431,55 @@ class AppState extends ChangeNotifier {
     final segment = transcript.firstWhere((s) => s.id == segmentId);
     segment.text = newText;
     _notifyAndSave();
+  }
+
+  /// Splits the segment at [segmentId]'s text at character offset
+  /// [splitIndex] into two segments — the second holds everything from
+  /// [splitIndex] onward and is inserted right after the first. [start]/
+  /// [end] are proportioned by each half's share of the original text
+  /// length (no word-level timing data exists to split on), clamped so
+  /// neither half collapses to a zero-length range. Returns the new
+  /// second segment's id (for the caller to move editing focus onto it),
+  /// or [segmentId] unchanged if the split index doesn't actually split
+  /// anything (e.g. at the very start/end, or on whitespace-only text).
+  String splitTranscriptSegment(String segmentId, int splitIndex) {
+    final index = transcript.indexWhere((s) => s.id == segmentId);
+    if (index == -1) return segmentId;
+    final segment = transcript[index];
+    final text = segment.text;
+    final clamped = splitIndex.clamp(0, text.length);
+    if (clamped <= 0 || clamped >= text.length) return segmentId;
+
+    final firstText = text.substring(0, clamped).trimRight();
+    final secondText = text.substring(clamped).trimLeft();
+    if (firstText.isEmpty || secondText.isEmpty) return segmentId;
+
+    final totalMs = segment.duration.inMilliseconds;
+    final rawOffsetMs = (totalMs * (clamped / text.length)).round();
+    final offsetMs = totalMs > 1 ? rawOffsetMs.clamp(1, totalMs - 1) : rawOffsetMs;
+    final splitTime = segment.start + Duration(milliseconds: offsetMs);
+    final newId = const Uuid().v4();
+
+    transcript.replaceRange(index, index + 1, [
+      TranscriptSegment(
+        id: segment.id,
+        start: segment.start,
+        end: splitTime,
+        text: firstText,
+        isSilence: segment.isSilence,
+        isMarkedForCut: segment.isMarkedForCut,
+      ),
+      TranscriptSegment(
+        id: newId,
+        start: splitTime,
+        end: segment.end,
+        text: secondText,
+        isSilence: segment.isSilence,
+        isMarkedForCut: segment.isMarkedForCut,
+      ),
+    ]);
+    _notifyAndSave();
+    return newId;
   }
 
   void toggleMarkForCut(String segmentId) {

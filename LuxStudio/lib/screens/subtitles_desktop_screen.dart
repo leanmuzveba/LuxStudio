@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../main.dart';
 import '../models/caption_style.dart';
 import '../models/transcript_segment.dart';
+import '../state/app_state.dart';
 import '../theme/lux_theme.dart';
 import '../widgets/video_scrub_mixin.dart';
 
@@ -53,10 +54,20 @@ class SubtitlesDesktopScreen extends StatefulWidget {
 
 class _SubtitlesDesktopScreenState extends State<SubtitlesDesktopScreen>
     with VideoScrubMixin<SubtitlesDesktopScreen> {
+  /// The segment currently open for inline editing in [_TranscriptPane], if
+  /// any — lifted up here (rather than local to a list item) so a split can
+  /// move editing onto the newly created second segment.
+  String? _editingSegmentId;
+
   @override
   void dispose() {
     disposeVideoScrub();
     super.dispose();
+  }
+
+  void _handleSplit(AppState appState, String segmentId, int splitIndex) {
+    final newId = appState.splitTranscriptSegment(segmentId, splitIndex);
+    setState(() => _editingSegmentId = newId);
   }
 
   TranscriptSegment? _currentSegment(List<TranscriptSegment> segments, int offsetMs) {
@@ -103,7 +114,11 @@ class _SubtitlesDesktopScreenState extends State<SubtitlesDesktopScreen>
                       child: _TranscriptPane(
                         segments: segments,
                         highlightedId: currentSegment?.id,
-                        onTapSegment: (s) => seekTo(s.start),
+                        editingSegmentId: _editingSegmentId,
+                        onStartEdit: (id) => setState(() => _editingSegmentId = id),
+                        onStopEdit: () => setState(() => _editingSegmentId = null),
+                        onTextChanged: appState.updateTranscriptText,
+                        onSplit: (id, splitIndex) => _handleSplit(appState, id, splitIndex),
                       ),
                     ),
                     const VerticalDivider(width: 1, color: LuxColors.border),
@@ -185,9 +200,21 @@ class _Header extends StatelessWidget {
 class _TranscriptPane extends StatelessWidget {
   final List<TranscriptSegment> segments;
   final String? highlightedId;
-  final ValueChanged<TranscriptSegment> onTapSegment;
+  final String? editingSegmentId;
+  final ValueChanged<String> onStartEdit;
+  final VoidCallback onStopEdit;
+  final void Function(String segmentId, String text) onTextChanged;
+  final void Function(String segmentId, int splitIndex) onSplit;
 
-  const _TranscriptPane({required this.segments, required this.highlightedId, required this.onTapSegment});
+  const _TranscriptPane({
+    required this.segments,
+    required this.highlightedId,
+    required this.editingSegmentId,
+    required this.onStartEdit,
+    required this.onStopEdit,
+    required this.onTextChanged,
+    required this.onSplit,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -222,48 +249,158 @@ class _TranscriptPane extends StatelessWidget {
                   itemCount: segments.length,
                   itemBuilder: (context, i) {
                     final segment = segments[i];
-                    final active = segment.id == highlightedId;
-                    return Material(
-                      color: active ? LuxColors.gold.withValues(alpha: 0.08) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: () => onTapSegment(segment),
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          margin: const EdgeInsets.only(bottom: 4),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            border: active ? const Border(left: BorderSide(color: LuxColors.gold, width: 2)) : null,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                segment.timeLabel,
-                                style: LuxText.manrope(
-                                  size: 9.5,
-                                  weight: FontWeight.w600,
-                                  color: active ? LuxColors.gold : LuxColors.textMuted,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                segment.text,
-                                style: LuxText.manrope(
-                                  size: 12.5,
-                                  color: active ? LuxColors.textPrimary : LuxColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    return _TranscriptLine(
+                      key: ValueKey(segment.id),
+                      segment: segment,
+                      active: segment.id == highlightedId,
+                      editing: segment.id == editingSegmentId,
+                      onStartEdit: () => onStartEdit(segment.id),
+                      onStopEdit: onStopEdit,
+                      onTextChanged: (text) => onTextChanged(segment.id, text),
+                      onSplit: (splitIndex) => onSplit(segment.id, splitIndex),
                     );
                   },
                 ),
         ),
       ],
+    );
+  }
+}
+
+/// One transcript line — a static label by default; tapping it opens an
+/// inline, single-line [TextField] with a real cursor. Pressing Enter mid-
+/// text splits the segment at the cursor (see
+/// [AppState.splitTranscriptSegment]) rather than inserting a newline
+/// (`maxLines: 1` on the field prevents that and routes Enter to
+/// [TextField.onSubmitted] instead); the new second half is inserted right
+/// below as its own line, matching "move the right side to the next line."
+/// Pressing Enter at the very start/end (nothing to split) or tapping away
+/// just commits and closes the field — every keystroke already autosaves
+/// via [onTextChanged], same pattern as the Settings screens' text fields.
+class _TranscriptLine extends StatefulWidget {
+  final TranscriptSegment segment;
+  final bool active;
+  final bool editing;
+  final VoidCallback onStartEdit;
+  final VoidCallback onStopEdit;
+  final ValueChanged<String> onTextChanged;
+  final ValueChanged<int> onSplit;
+
+  const _TranscriptLine({
+    required super.key,
+    required this.segment,
+    required this.active,
+    required this.editing,
+    required this.onStartEdit,
+    required this.onStopEdit,
+    required this.onTextChanged,
+    required this.onSplit,
+  });
+
+  @override
+  State<_TranscriptLine> createState() => _TranscriptLineState();
+}
+
+class _TranscriptLineState extends State<_TranscriptLine> {
+  late final TextEditingController _controller = TextEditingController(text: widget.segment.text);
+  late final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.editing) _focusAtStart();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TranscriptLine old) {
+    super.didUpdateWidget(old);
+    if (widget.editing && !old.editing) {
+      _controller.text = widget.segment.text;
+      _focusAtStart();
+    } else if (!widget.editing && widget.segment.text != _controller.text) {
+      _controller.text = widget.segment.text;
+    }
+  }
+
+  void _focusAtStart() {
+    _controller.selection = const TextSelection.collapsed(offset: 0);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleSubmitted(String value) {
+    final cursor = _controller.selection.baseOffset;
+    final splitAt = cursor < 0 ? value.length : cursor;
+    if (splitAt > 0 && splitAt < value.length) {
+      widget.onSplit(splitAt);
+    } else {
+      widget.onStopEdit();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final segment = widget.segment;
+    final active = widget.active;
+    return Material(
+      color: active ? LuxColors.gold.withValues(alpha: 0.08) : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: widget.editing ? null : widget.onStartEdit,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          margin: const EdgeInsets.only(bottom: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: active ? const Border(left: BorderSide(color: LuxColors.gold, width: 2)) : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                segment.timeLabel,
+                style: LuxText.manrope(
+                  size: 9.5,
+                  weight: FontWeight.w600,
+                  color: active ? LuxColors.gold : LuxColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 3),
+              widget.editing
+                  ? TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      maxLines: 1,
+                      style: LuxText.manrope(size: 12.5, color: LuxColors.textPrimary),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                        border: InputBorder.none,
+                      ),
+                      onChanged: widget.onTextChanged,
+                      onSubmitted: _handleSubmitted,
+                      onTapOutside: (_) => widget.onStopEdit(),
+                    )
+                  : Text(
+                      segment.text,
+                      style: LuxText.manrope(
+                        size: 12.5,
+                        color: active ? LuxColors.textPrimary : LuxColors.textSecondary,
+                      ),
+                    ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

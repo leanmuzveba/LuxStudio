@@ -391,6 +391,63 @@ void main() {
     expect(appState.captionStyle.italic, isTrue);
   });
 
+  testWidgets('Desktop Subtitles splits a segment at the cursor on Enter', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final appState = buildTestAppState();
+    appState.startImport(VideoProject(
+      id: 'p1',
+      fileName: 'sermon.mp4',
+      backendProjectId: 'test-project-id',
+      rawDuration: const Duration(minutes: 30),
+      processedDuration: const Duration(minutes: 28),
+      width: 1080,
+      height: 1920,
+      importedAt: DateTime(2026, 1, 1),
+    ));
+    appState.transcript.add(TranscriptSegment(
+      id: 's1',
+      start: Duration.zero,
+      end: const Duration(seconds: 10),
+      text: 'Good morning everyone welcome to the service.',
+    ));
+
+    await pumpApp(tester, appState);
+
+    await tester.tap(find.text('Subtitles'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Tap the transcript line to enter edit mode (the same text also
+    // appears, smaller, in the timeline strip below — target the pane's).
+    // A blinking-cursor TextField never "settles", so pump a bounded number
+    // of frames rather than pumpAndSettle.
+    await tester.tap(find.byKey(const ValueKey('s1')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // Place the cursor right after "Good morning" and press Enter — should
+    // split into two segments there rather than inserting a newline.
+    final field = tester.widget<TextField>(find.byType(TextField));
+    field.controller!.selection = const TextSelection.collapsed(offset: 12);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(appState.transcript.length, 2);
+    expect(appState.transcript[0].id, 's1');
+    expect(appState.transcript[0].text, 'Good morning');
+    expect(appState.transcript[1].text, 'everyone welcome to the service.');
+    expect(appState.transcript[0].end, appState.transcript[1].start);
+    expect(appState.transcript[1].end, const Duration(seconds: 10));
+
+    // The new second segment opens for editing automatically (focus moves
+    // to it, matching "the right side moves to the next line").
+    expect(find.text('Good morning'), findsWidgets);
+  });
+
   testWidgets('Desktop Exports shows the real export history from the backend', (tester) async {
     tester.view.physicalSize = const Size(1400, 900);
     tester.view.devicePixelRatio = 1.0;
