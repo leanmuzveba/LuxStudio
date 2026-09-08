@@ -518,8 +518,8 @@ class _TimelineArea extends StatelessWidget {
                         alignment: Alignment.centerRight,
                         child: Container(
                           width: 2,
+                          height: double.infinity,
                           color: LuxColors.gold,
-                          margin: const EdgeInsets.symmetric(vertical: -2),
                         ),
                       ),
                     ),

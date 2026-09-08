@@ -46,38 +46,62 @@ class _DesktopShellScaffoldState extends State<DesktopShellScaffold> {
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
 
-    return Scaffold(
-      body: Row(
-        children: [
-          _Sidebar(
-            selectedIndex: _index,
-            navItems: _navItems,
-            settingsIndex: _settingsIndex,
-            onSelect: (i) => setState(() => _index = i),
-            projectTitle: appState.project?.title,
-            progress: switch (appState.analyseStatus) {
-              'done' => 1.0,
-              'running' => (appState.analysePercent.clamp(0, 100)) / 100,
-              _ => 0.0,
-            },
-          ),
-          Expanded(
-            child: IndexedStack(
-              index: _index,
-              children: const [
-                VideoEditorDesktopScreen(),
-                MediaLibraryDesktopScreen(),
-                AiHighlightsDesktopScreen(),
-                SubtitlesDesktopScreen(),
-                ExportsDesktopScreen(),
-                SettingsDesktopScreen(),
-              ],
+    return DesktopShellScope(
+      selectTab: (i) => setState(() => _index = i),
+      child: Scaffold(
+        body: Row(
+          children: [
+            _Sidebar(
+              selectedIndex: _index,
+              navItems: _navItems,
+              settingsIndex: _settingsIndex,
+              onSelect: (i) => setState(() => _index = i),
+              projectTitle: appState.project?.title,
+              progress: switch (appState.analyseStatus) {
+                'done' => 1.0,
+                'running' => (appState.analysePercent.clamp(0, 100)) / 100,
+                _ => 0.0,
+              },
             ),
-          ),
-        ],
+            Expanded(
+              child: IndexedStack(
+                index: _index,
+                children: const [
+                  VideoEditorDesktopScreen(),
+                  MediaLibraryDesktopScreen(),
+                  AiHighlightsDesktopScreen(),
+                  SubtitlesDesktopScreen(),
+                  ExportsDesktopScreen(),
+                  SettingsDesktopScreen(),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+/// Lets a screen living inside [DesktopShellScaffold]'s [IndexedStack] (e.g.
+/// AI Highlights' "Edit Clip") switch the shell to another of its own tabs
+/// (tab 0 is Editor) instead of pushing a full-screen route — pushing
+/// [AppRoutes.editor] instead would stack the mobile [PhoneShell]-capped
+/// [VideoEditorScreen] on top of the desktop shell rather than showing
+/// [VideoEditorDesktopScreen], which is already one tab away. Absent outside
+/// the desktop shell (mobile has no equivalent "switch tab" concept), so
+/// callers should fall back to the named route when this is null.
+class DesktopShellScope extends InheritedWidget {
+  final ValueChanged<int> selectTab;
+  static const editorTabIndex = 0;
+
+  const DesktopShellScope({super.key, required this.selectTab, required super.child});
+
+  static ValueChanged<int>? maybeSelectTabOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DesktopShellScope>()?.selectTab;
+
+  @override
+  bool updateShouldNotify(DesktopShellScope oldWidget) => selectTab != oldWidget.selectTab;
 }
 
 class _NavDestination {

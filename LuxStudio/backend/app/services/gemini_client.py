@@ -21,7 +21,7 @@ from google.genai import types
 
 from app.config import get_settings
 
-_MODEL_NAME = "gemini-2.5-flash"
+_MODEL_NAME = "gemini-3.6-flash"
 _FENCE_RE = re.compile(r"^```[a-zA-Z]*\n?")
 
 
@@ -117,7 +117,11 @@ def _generate(
         if response_mime_type
         else None
     )
-    return _client().models.generate_content(
+    # Keep a strong reference to the client for the whole call: genai.Client.__del__
+    # closes its httpx client, so a client created only inline (`_client().models...`)
+    # can be garbage-collected — and its connection closed — before the request completes.
+    client = _client()
+    return client.models.generate_content(
         model=_MODEL_NAME, contents=contents, config=config
     )
 

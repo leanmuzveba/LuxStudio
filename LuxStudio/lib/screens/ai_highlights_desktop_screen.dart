@@ -5,6 +5,7 @@ import '../models/ai_clip.dart';
 import '../state/app_state.dart';
 import '../theme/lux_theme.dart';
 import '../utils/error_presenter.dart';
+import '../widgets/desktop_shell_scaffold.dart';
 
 /// Desktop AI Highlights — matches `ui_kit/ai_highlights_desktop/`'s
 /// segments-grid + reels-panel layout, wired to the same
@@ -97,7 +98,12 @@ class AiHighlightsDesktopScreen extends StatelessWidget {
 
   void _openInEditor(BuildContext context, AppState appState, AiClip clip) {
     appState.chooseClip(clip);
-    Navigator.of(context).pushNamed(AppRoutes.editor);
+    final selectTab = DesktopShellScope.maybeSelectTabOf(context);
+    if (selectTab != null) {
+      selectTab(DesktopShellScope.editorTabIndex);
+    } else {
+      Navigator.of(context).pushNamed(AppRoutes.editor);
+    }
   }
 
   void _openInShare(BuildContext context, AppState appState, AiClip clip) {
