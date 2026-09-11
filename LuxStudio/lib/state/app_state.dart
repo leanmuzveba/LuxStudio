@@ -732,6 +732,26 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Renames a project from the Home dashboard's card menu, without
+  /// opening it. Updates the stored snapshot directly so the rename
+  /// survives even if [snapshot] isn't the currently active project.
+  Future<void> renameProject(ProjectSnapshot snapshot, String newTitle) async {
+    snapshot.project.title = newTitle;
+    snapshot.project.updatedAt = DateTime.now();
+    await _projectStore.save(snapshot);
+    if (project?.id == snapshot.project.id) {
+      project!.title = newTitle;
+      notifyListeners();
+    }
+    await loadRecentProjects();
+  }
+
+  /// Deletes a project from the Home dashboard's card menu.
+  Future<void> deleteProject(ProjectSnapshot snapshot) async {
+    await _projectStore.delete(snapshot.project.id);
+    await loadRecentProjects();
+  }
+
   AiClip? _findClip(String id) {
     for (final clip in suggestedClips) {
       if (clip.id == id) return clip;

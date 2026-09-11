@@ -57,6 +57,56 @@ class _HomeScreenState extends State<HomeScreen> {
     appState.loadRecentProjects();
   }
 
+  Future<void> _editProject(AppState appState, ProjectSnapshot snapshot) async {
+    final controller = TextEditingController(text: snapshot.project.title);
+    final newTitle = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: LuxColors.surface,
+        title: Text('Rename Project', style: LuxText.sora(size: 16, weight: FontWeight.w700)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: LuxText.manrope(size: 14, color: LuxColors.textPrimary),
+          decoration: const InputDecoration(hintText: 'Project name'),
+          onSubmitted: (v) => Navigator.of(context).pop(v),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (newTitle == null || newTitle.trim().isEmpty) return;
+    await appState.renameProject(snapshot, newTitle.trim());
+  }
+
+  Future<void> _deleteProject(AppState appState, ProjectSnapshot snapshot) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: LuxColors.surface,
+        title: Text('Delete "${snapshot.project.title}"?', style: LuxText.sora(size: 16, weight: FontWeight.w700)),
+        content: Text(
+          'This permanently removes the project and its transcript, clips, and settings. This cannot be undone.',
+          style: LuxText.manrope(size: 13, color: LuxColors.textSecondary),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete', style: TextStyle(color: LuxColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await appState.deleteProject(snapshot);
+  }
+
   List<ProjectSnapshot> _filtered(List<ProjectSnapshot> all) {
     var list = all;
     switch (_filter) {
@@ -167,6 +217,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               _TeachingCard(
                                 snapshot: snapshot,
                                 onTap: () => _openProject(appState, snapshot),
+                                onEdit: () => _editProject(appState, snapshot),
+                                onDelete: () => _deleteProject(appState, snapshot),
                               ),
                               const SizedBox(height: 16),
                             ],
@@ -350,10 +402,19 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
+enum _TeachingCardAction { edit, delete }
+
 class _TeachingCard extends StatelessWidget {
   final ProjectSnapshot snapshot;
   final VoidCallback onTap;
-  const _TeachingCard({required this.snapshot, required this.onTap});
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  const _TeachingCard({
+    required this.snapshot,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -411,7 +472,29 @@ class _TeachingCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.more_vert_rounded, size: 20, color: LuxColors.textSecondary),
+          PopupMenuButton<_TeachingCardAction>(
+            icon: const Icon(Icons.more_vert_rounded, size: 20, color: LuxColors.textSecondary),
+            color: LuxColors.surface,
+            tooltip: 'Project options',
+            onSelected: (action) {
+              switch (action) {
+                case _TeachingCardAction.edit:
+                  onEdit();
+                case _TeachingCardAction.delete:
+                  onDelete();
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: _TeachingCardAction.edit,
+                child: Text('Edit', style: LuxText.manrope(size: 14, color: LuxColors.textPrimary)),
+              ),
+              PopupMenuItem(
+                value: _TeachingCardAction.delete,
+                child: Text('Delete', style: LuxText.manrope(size: 14, color: LuxColors.error)),
+              ),
+            ],
+          ),
         ],
       ),
     );

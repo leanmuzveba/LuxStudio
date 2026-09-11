@@ -138,6 +138,24 @@ class ProjectStore {
     }
   }
 
+  /// Permanently removes a project's snapshot — used when the user deletes
+  /// a project from the Home dashboard. Best-effort, like every other
+  /// method here: a failure just leaves the project in place.
+  Future<void> delete(String id) async {
+    try {
+      final prefs = await _preferencesProvider();
+      await prefs.remove(_snapshotKey(id));
+      final ids = prefs.getStringList(_idsKey) ?? [];
+      ids.remove(id);
+      await prefs.setStringList(_idsKey, ids);
+      if (prefs.getString(_lastOpenKey) == id) {
+        await prefs.remove(_lastOpenKey);
+      }
+    } catch (_) {
+      // Best-effort — see class doc.
+    }
+  }
+
   ProjectSnapshot? _load(SharedPreferences prefs, String id) {
     final raw = prefs.getString(_snapshotKey(id));
     if (raw == null) return null;
