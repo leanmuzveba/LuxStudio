@@ -121,6 +121,10 @@ class AppState extends ChangeNotifier {
   int libraryLimitBytes = 0;
   bool isLoadingLibrary = false;
   bool isUploadingLibraryAsset = false;
+
+  /// 0.0–1.0 real upload progress (see [MediaLibraryService.uploadAsset]'s
+  /// `onProgress`), backing the Media Library's upload progress dialog.
+  double libraryUploadProgress = 0.0;
   String? libraryError;
 
   /// Loads folders, assets, and the quota summary — call when the Media
@@ -172,6 +176,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> uploadLibraryAsset(Uint8List bytes, String filename, {String? folderId}) async {
     isUploadingLibraryAsset = true;
+    libraryUploadProgress = 0.0;
     libraryError = null;
     notifyListeners();
     try {
@@ -179,6 +184,10 @@ class AppState extends ChangeNotifier {
         bytes: bytes,
         filename: filename,
         folderId: folderId,
+        onProgress: (sent, total) {
+          libraryUploadProgress = total > 0 ? sent / total : 0.0;
+          notifyListeners();
+        },
       );
       libraryAssets = [...libraryAssets, asset];
       libraryUsedBytes += asset.sizeBytes;
@@ -186,6 +195,7 @@ class AppState extends ChangeNotifier {
       libraryError = e.toString();
     } finally {
       isUploadingLibraryAsset = false;
+      libraryUploadProgress = 0.0;
       notifyListeners();
     }
   }

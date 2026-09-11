@@ -55,7 +55,63 @@ class _MediaLibraryDesktopScreenState extends State<MediaLibraryDesktopScreen> {
     final file = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: ['mp4', 'mov']);
     if (file == null) return;
     final Uint8List bytes = await file.readAsBytes();
+    if (!mounted) return;
+    _showUploadProgressDialog(appState, file.name);
     await appState.uploadLibraryAsset(bytes, file.name, folderId: _selectedFolderId);
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+    if (appState.libraryError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(appState.libraryError))));
+    }
+  }
+
+  /// Non-dismissible upload popup — closed by [_uploadMedia] once the
+  /// upload settles (success or error), not by the user tapping outside.
+  /// Progress comes from real bytes-sent-over-the-wire events (see
+  /// `upload_progress_web.dart`), so the bar actually tracks the transfer
+  /// rather than just spinning indefinitely.
+  void _showUploadProgressDialog(AppState appState, String filename) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AnimatedBuilder(
+        animation: appState,
+        builder: (context, _) {
+          final progress = appState.libraryUploadProgress;
+          return AlertDialog(
+            backgroundColor: LuxColors.surface,
+            title: Text('Uploading Video', style: LuxText.sora(size: 16, weight: FontWeight.w700)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  filename,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: LuxText.manrope(size: 13, color: LuxColors.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress > 0 ? progress : null,
+                    minHeight: 6,
+                    backgroundColor: LuxColors.surfaceRaised,
+                    color: LuxColors.gold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  progress > 0 ? '${(progress * 100).clamp(0, 100).toStringAsFixed(0)}%' : 'Starting…',
+                  style: LuxText.manrope(size: 12, color: LuxColors.textMuted),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _createFolder(AppState appState) async {

@@ -29,6 +29,7 @@ class MediaLibraryService {
     required Uint8List bytes,
     required String filename,
     String? folderId,
+    void Function(int sent, int total)? onProgress,
   }) async {
     final response = await _apiClient.postMultipart(
       '/library/assets',
@@ -36,6 +37,7 @@ class MediaLibraryService {
       bytes: bytes,
       filename: filename,
       fields: folderId == null ? null : {'folder_id': folderId},
+      onProgress: onProgress,
     );
     return LibraryAsset.fromJson(response);
   }
