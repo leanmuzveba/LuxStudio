@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -164,17 +165,37 @@ def remove_ranges(
     # ffmpeg's filtergraph parser would otherwise read as filter separators —
     # e.g. "select=not(between(t,1.1,2.3))" gets split into a bogus filter
     # named "1.1". Single-quoting the whole expression value stops that.
-    _run(
-        [
-            "ffmpeg", "-y",
-            "-i", str(source_path),
-            "-vf", f"select='{expr}',setpts=N/FRAME_RATE/TB",
-            "-af", f"aselect='{expr}',asetpts=N/SR/TB",
-            *_WEB_SAFE_CODEC_ARGS,
-            str(output_path),
-        ],
-        "ffmpeg silence removal",
-    )
+    vf_script = f"select='{expr}',setpts=N/FRAME_RATE/TB"
+    af_script = f"aselect='{expr}',asetpts=N/SR/TB"
+
+    # A long sermon can have hundreds of silence ranges, so `expr` can run to
+    # tens of thousands of characters. Passing that inline via -vf/-af blows
+    # past Windows' ~32K CreateProcess command-line limit (WinError 206:
+    # "The filename or extension is too long"). -filter_script reads the
+    # identical syntax from a file instead of the command line, so it has no
+    # such limit.
+    with tempfile.NamedTemporaryFile("w", suffix=".vf", delete=False) as vf_file:
+        vf_file.write(vf_script)
+        vf_path = vf_file.name
+    with tempfile.NamedTemporaryFile("w", suffix=".af", delete=False) as af_file:
+        af_file.write(af_script)
+        af_path = af_file.name
+
+    try:
+        _run(
+            [
+                "ffmpeg", "-y",
+                "-i", str(source_path),
+                "-filter_script:v", vf_path,
+                "-filter_script:a", af_path,
+                *_WEB_SAFE_CODEC_ARGS,
+                str(output_path),
+            ],
+            "ffmpeg silence removal",
+        )
+    finally:
+        Path(vf_path).unlink(missing_ok=True)
+        Path(af_path).unlink(missing_ok=True)
 
 
 def extract_audio(source_path: str | Path, output_path: str | Path) -> None:

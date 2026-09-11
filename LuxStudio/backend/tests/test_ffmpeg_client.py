@@ -1,6 +1,7 @@
 """Ports test/services/ffmpeg_service_test.dart's parseSilenceLog coverage."""
 
-from unittest.mock import patch
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from app.services.ffmpeg_client import parse_silence_log, remove_ranges
 
@@ -50,16 +51,24 @@ class TestRemoveRangesFilterQuoting:
         whole expression is quoted — regression test for the bug where
         `select=not(between(t,1.145,2.3))` (unquoted) made ffmpeg treat
         "1.145" as a bogus filter name and fail with "Filter not found"."""
-        with patch("app.services.ffmpeg_client.subprocess.run") as mock_run:
-            mock_run.return_value.returncode = 0
+        # remove_ranges deletes the -filter_script temp files itself once
+        # ffmpeg returns, so their contents have to be captured while the
+        # mocked subprocess.run call is still executing.
+        captured = {}
+
+        def fake_run(args, **kwargs):
+            captured["vf"] = Path(args[args.index("-filter_script:v") + 1]).read_text()
+            captured["af"] = Path(args[args.index("-filter_script:a") + 1]).read_text()
+            result = MagicMock()
+            result.returncode = 0
+            return result
+
+        with patch("app.services.ffmpeg_client.subprocess.run", side_effect=fake_run):
             remove_ranges(
                 source_path="in.mp4",
                 output_path="out.mp4",
                 ranges_to_remove=[{"startMs": 1145, "endMs": 2300}],
             )
 
-        args = mock_run.call_args[0][0]
-        vf = args[args.index("-vf") + 1]
-        af = args[args.index("-af") + 1]
-        assert vf == "select='not(between(t,1.145,2.300))',setpts=N/FRAME_RATE/TB"
-        assert af == "aselect='not(between(t,1.145,2.300))',asetpts=N/SR/TB"
+        assert captured["vf"] == "select='not(between(t,1.145,2.300))',setpts=N/FRAME_RATE/TB"
+        assert captured["af"] == "aselect='not(between(t,1.145,2.300))',asetpts=N/SR/TB"
