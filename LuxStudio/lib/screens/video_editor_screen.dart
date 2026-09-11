@@ -360,7 +360,7 @@ class _PreviewPane extends StatelessWidget {
                   else
                     const Icon(Icons.movie_creation_outlined, size: 40, color: LuxColors.borderStrong),
                   if (!ready)
-                    const CircularProgressIndicator(color: LuxColors.gold)
+                    const Center(child: CircularProgressIndicator(color: LuxColors.gold))
                   else if (!playerController!.value.isPlaying)
                     Icon(Icons.play_arrow_rounded, size: 44, color: Colors.white.withValues(alpha: 0.8)),
                   if (captionText != null && captionText!.trim().isNotEmpty)
