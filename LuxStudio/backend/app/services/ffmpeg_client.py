@@ -118,19 +118,44 @@ def _between_clause(r: dict[str, Any]) -> str:
     return f"between(t,{_seconds(r['startMs'])},{_seconds(r['endMs'])})"
 
 
+_WEB_SAFE_CODEC_ARGS = [
+    "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+    "-c:a", "aac", "-b:a", "192k",
+    "-movflags", "+faststart",
+]
+
+
 def remove_ranges(
     *,
     source_path: str | Path,
     output_path: str | Path,
     ranges_to_remove: list[dict[str, Any]],
+    force_reencode: bool = False,
 ) -> None:
     """Produces a new file at output_path with ranges_to_remove cut out of
     source_path and the remaining audio/video closed up (no gaps). If
-    ranges_to_remove is empty, just copies the source through unchanged."""
-    if not ranges_to_remove:
+    ranges_to_remove is empty, just copies the source through unchanged —
+    unless force_reencode is set.
+
+    force_reencode skips that copy-through fast path even with nothing to
+    cut, re-encoding into H.264/AAC instead. Needed when source_path's
+    container/codecs (e.g. an .mkv upload — its audio is very often AC3,
+    DTS, or Opus) aren't ones a browser's <video> element can play: this
+    output backs both the editor's live preview and (via `working_video_
+    filename`) `/projects/{id}/video`, so it always has to be web-safe,
+    regardless of whether there was any silence to remove.
+    """
+    if not ranges_to_remove and not force_reencode:
         _run(
             ["ffmpeg", "-y", "-i", str(source_path), "-c", "copy", str(output_path)],
             "ffmpeg copy passthrough",
+        )
+        return
+
+    if not ranges_to_remove:
+        _run(
+            ["ffmpeg", "-y", "-i", str(source_path), *_WEB_SAFE_CODEC_ARGS, str(output_path)],
+            "ffmpeg re-encode",
         )
         return
 
@@ -145,6 +170,7 @@ def remove_ranges(
             "-i", str(source_path),
             "-vf", f"select='{expr}',setpts=N/FRAME_RATE/TB",
             "-af", f"aselect='{expr}',asetpts=N/SR/TB",
+            *_WEB_SAFE_CODEC_ARGS,
             str(output_path),
         ],
         "ffmpeg silence removal",

@@ -9,6 +9,7 @@ import '../models/library_folder.dart';
 import '../state/app_state.dart';
 import '../theme/lux_theme.dart';
 import '../utils/error_presenter.dart';
+import '../utils/video_format.dart';
 
 /// Desktop Media Library — matches `ui_kit/media_library_desktop/`'s
 /// folders + asset-grid layout, wired to the real backend asset-library
@@ -52,8 +53,13 @@ class _MediaLibraryDesktopScreenState extends State<MediaLibraryDesktopScreen> {
   }
 
   Future<void> _uploadMedia(AppState appState) async {
-    final file = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: ['mp4', 'mov']);
+    final file = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: ['mp4', 'mov', 'mkv']);
     if (file == null) return;
+    if (!mounted) return;
+    if (!isSupportedVideoFilename(file.name)) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(unsupportedVideoFormatMessage(file.name))));
+      return;
+    }
     final Uint8List bytes = await file.readAsBytes();
     if (!mounted) return;
     _showUploadProgressDialog(appState, file.name);

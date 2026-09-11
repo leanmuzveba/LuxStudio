@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 
 import '../models/video_project.dart';
+import '../utils/video_format.dart';
 import 'api_client.dart';
 
 /// A picked file, reduced to what [MediaImportService] needs. Wraps
@@ -41,7 +42,7 @@ class MediaImportService {
   static Future<PickedMediaFile?> _defaultPickFile() async {
     final file = await FilePicker.pickFile(
       type: FileType.custom,
-      allowedExtensions: ['mp4', 'mov'],
+      allowedExtensions: ['mp4', 'mov', 'mkv'],
     );
     if (file == null) return null;
     return PickedMediaFile(name: file.name, path: file.path, readAsBytes: file.readAsBytes);
@@ -60,6 +61,9 @@ class MediaImportService {
   Future<VideoProject?> importVideo({void Function(int sent, int total)? onProgress}) async {
     final picked = await _pickFile();
     if (picked == null) return null;
+    if (!isSupportedVideoFilename(picked.name)) {
+      throw Exception(unsupportedVideoFormatMessage(picked.name));
+    }
 
     final bytes = await picked.readAsBytes();
     final response = await _apiClient.postMultipart(

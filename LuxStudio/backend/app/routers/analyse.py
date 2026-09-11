@@ -33,6 +33,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects", tags=["analyse"])
 
 STEPS = ["silence_removal", "audio_enhancement", "clip_identification", "captioning"]
+
+# Containers a browser's <video> element can actually play — mirrors the
+# Flutter client's lib/utils/video_format.dart. Anything else (most
+# commonly .mkv) needs remove_ranges' force_reencode below, regardless of
+# whether there's any silence to cut.
+_WEB_SAFE_EXTENSIONS = {".mp4", ".mov"}
 _STEP_WEIGHTS = {
     "silence_removal": 25,
     "audio_enhancement": 15,
@@ -84,6 +90,7 @@ def _run_pipeline(project_id: str) -> None:
             source_path=source_path,
             output_path=working_path,
             ranges_to_remove=accepted,
+            force_reencode=source_path.suffix.lower() not in _WEB_SAFE_EXTENSIONS,
         )
 
         _set_status(

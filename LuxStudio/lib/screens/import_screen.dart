@@ -143,7 +143,7 @@ class _ImportScreenState extends State<ImportScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'MP4, MOV — up to 4GB',
+                                  'MP4, MOV, MKV — up to 4GB',
                                   style: LuxText.manrope(size: 12.5, weight: FontWeight.w500, color: LuxColors.textSecondary),
                                 ),
                               ],
