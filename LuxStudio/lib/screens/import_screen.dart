@@ -46,13 +46,20 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Future<void> _pickNewFile(AppState appState) async {
-    setState(() => _importError = null);
+    // _importing flips on *before* the picker/upload call below, not after
+    // — the picker dialog itself is a modal the OS shows, but the actual
+    // upload that follows a selection can take a while for a large sermon
+    // video, and the overlay is the only thing telling the user it's
+    // happening at all.
+    setState(() {
+      _importError = null;
+      _importing = true;
+    });
     try {
       final project = await _mediaImportService.importVideo();
       if (!mounted) return;
       if (project == null) return; // user cancelled the picker
 
-      setState(() => _importing = true);
       appState.startImport(project);
       if (!mounted) return;
       Navigator.of(context).pushReplacementNamed(AppRoutes.analyse);
@@ -212,7 +219,14 @@ class _ImportScreenState extends State<ImportScreen> {
                         Container(
                           color: LuxColors.background.withValues(alpha: 0.85),
                           alignment: Alignment.center,
-                          child: const CircularProgressIndicator(color: LuxColors.gold),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const CircularProgressIndicator(color: LuxColors.gold),
+                              const SizedBox(height: 16),
+                              Text('Uploading video…', style: LuxText.manrope(size: 13, color: LuxColors.textSecondary)),
+                            ],
+                          ),
                         ),
                     ],
                   ),
