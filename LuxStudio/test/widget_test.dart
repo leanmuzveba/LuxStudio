@@ -25,13 +25,25 @@ ApiClient buildTestApiClient() {
   final mockClient = http_testing.MockClient.streaming((request, bodyStream) async {
     final path = request.url.path;
 
-    if (request.method == 'POST' && path == '/projects') {
+    if (request.method == 'POST' && (path == '/projects' || path == '/projects/from-upload')) {
       return _jsonResponse({
         'id': 'test-project-id',
         'durationMs': 300000,
         'width': 1080,
         'height': 1920,
       });
+    }
+    if (request.method == 'POST' && (path == '/uploads' || path == '/library/assets/from-upload')) {
+      return _jsonResponse({
+        'upload_id': 'test-upload-id',
+        'id': 'test-asset-id',
+        'filename': 'sermon.mp4',
+        'folder_id': null,
+        'size_bytes': 1048576,
+      });
+    }
+    if (request.method == 'PUT' && path.endsWith('/chunk')) {
+      return _jsonResponse({'received': 1});
     }
     if (request.method == 'POST' && path.endsWith('/analyse')) {
       return _jsonResponse({'status': 'running', 'step': null, 'percent': 0, 'error': null});
@@ -138,7 +150,8 @@ MediaImportService buildTestMediaImportService() {
     pickFile: () async => PickedMediaFile(
       name: 'sermon.mp4',
       path: pickedFile.path,
-      readAsBytes: () async => pickedFile.readAsBytesSync(),
+      length: () async => pickedFile.lengthSync(),
+      readRange: (start, end) async => pickedFile.readAsBytesSync().sublist(start, end),
     ),
   );
 }

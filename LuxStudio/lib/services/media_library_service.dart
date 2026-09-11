@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import '../models/library_asset.dart';
 import '../models/library_folder.dart';
 import 'api_client.dart';
+import 'chunked_upload.dart';
 
 /// Talks to the backend's Media Library endpoints (`backend/app/routers
 /// /library.py`, V2 Decision #2) — folders, video assets, and a storage
@@ -25,20 +26,31 @@ class MediaLibraryService {
       .map((e) => LibraryAsset.fromJson(e as Map<String, dynamic>))
       .toList();
 
+  /// Uploads in fixed-size chunks (`chunked_upload.dart`) rather than one
+  /// in-memory buffer — a video asset here is just as likely to be a 1-2
+  /// hour, multi-GB sermon recording as one imported directly into a
+  /// project.
   Future<LibraryAsset> uploadAsset({
-    required Uint8List bytes,
     required String filename,
+    required int length,
+    required Future<Uint8List> Function(int start, int end) readRange,
     String? folderId,
     void Function(int sent, int total)? onProgress,
   }) async {
-    final response = await _apiClient.postMultipart(
-      '/library/assets',
-      fieldName: 'file',
-      bytes: bytes,
-      filename: filename,
-      fields: folderId == null ? null : {'folder_id': folderId},
+    final uploadId = await uploadInChunks(
+      apiClient: _apiClient,
+      length: length,
+      readRange: readRange,
       onProgress: onProgress,
     );
+    final query = {
+      'upload_id': uploadId,
+      'filename': filename,
+      if (folderId != null) 'folder_id': folderId,
+    };
+    final queryString =
+        query.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&');
+    final response = await _apiClient.postJson('/library/assets/from-upload?$queryString', const {});
     return LibraryAsset.fromJson(response);
   }
 

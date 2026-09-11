@@ -3,8 +3,6 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
-import 'upload_progress.dart' show multipartUploadWithProgress;
-
 /// Thin HTTP client for the LuxStudio backend — the only place the Flutter
 /// client talks to a server. Holds no secrets: the Gemini API key and the
 /// FFmpeg binary live entirely on the backend (see backend/README.md).
@@ -59,41 +57,33 @@ class ApiClient {
     return _decodeObject(response);
   }
 
-  /// Multipart upload — used for creating a project (video bytes) and any
-  /// future asset uploads.
-  ///
-  /// [onProgress], when given, reports real bytes-sent-over-the-wire
-  /// progress — only possible on web (see `upload_progress_web.dart`;
-  /// `package:http` itself has no upload-progress hook). Off web (e.g.
-  /// `flutter test`, which runs on the Dart VM) it's silently ignored and
-  /// this falls back to the plain `package:http` path below.
+  /// Multipart upload — fine for a small file (e.g. a church logo), held
+  /// in memory as one buffer. A large video should go through
+  /// `chunked_upload.dart` instead (see its doc for why).
   Future<Map<String, dynamic>> postMultipart(
     String path, {
     required String fieldName,
     required Uint8List bytes,
     required String filename,
     Map<String, String>? fields,
-    void Function(int sent, int total)? onProgress,
   }) async {
-    if (onProgress != null) {
-      try {
-        return await multipartUploadWithProgress(
-          url: _uri(path).toString(),
-          fieldName: fieldName,
-          bytes: bytes,
-          filename: filename,
-          fields: fields,
-          onProgress: onProgress,
-        );
-      } on UnsupportedError {
-        // Not running on web — fall through to the path below.
-      }
-    }
     final request = http.MultipartRequest('POST', _uri(path))
       ..files.add(http.MultipartFile.fromBytes(fieldName, bytes, filename: filename));
     if (fields != null) request.fields.addAll(fields);
     final streamed = await _client.send(request);
     final response = await http.Response.fromStream(streamed);
+    return _decodeObject(response);
+  }
+
+  /// PUTs a raw chunk of bytes — the building block `chunked_upload.dart`
+  /// uses to stream a large file to the backend in small pieces instead of
+  /// one big in-memory buffer.
+  Future<Map<String, dynamic>> putBytes(String path, Uint8List bytes) async {
+    final response = await _client.put(
+      _uri(path),
+      headers: {'Content-Type': 'application/octet-stream'},
+      body: bytes,
+    );
     return _decodeObject(response);
   }
 

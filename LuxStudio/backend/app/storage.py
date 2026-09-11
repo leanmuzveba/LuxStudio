@@ -77,6 +77,16 @@ def write_library_index(name: str, items: list[dict[str, Any]]) -> None:
     (library_dir() / f"{name}.json").write_text(json.dumps(items, indent=2), encoding="utf-8")
 
 
+def uploads_dir() -> Path:
+    """Root for in-progress chunked uploads (app/routers/uploads.py) —
+    assembled here before being claimed into a project's or library asset's
+    final location, so a large upload never has to land in one place and
+    then be copied to another."""
+    d = get_settings().storage_dir / "_uploads"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
 def exports_dir() -> Path:
     """Root of the export history store (V2 Decision #3) — a persistent
     copy of every completed export plus a history.json index, independent

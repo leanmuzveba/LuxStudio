@@ -174,15 +174,21 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> uploadLibraryAsset(Uint8List bytes, String filename, {String? folderId}) async {
+  Future<void> uploadLibraryAsset({
+    required String filename,
+    required int length,
+    required Future<Uint8List> Function(int start, int end) readRange,
+    String? folderId,
+  }) async {
     isUploadingLibraryAsset = true;
     libraryUploadProgress = 0.0;
     libraryError = null;
     notifyListeners();
     try {
       final asset = await _mediaLibraryService.uploadAsset(
-        bytes: bytes,
         filename: filename,
+        length: length,
+        readRange: readRange,
         folderId: folderId,
         onProgress: (sent, total) {
           libraryUploadProgress = total > 0 ? sent / total : 0.0;

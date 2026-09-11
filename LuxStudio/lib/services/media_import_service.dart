@@ -1,25 +1,35 @@
 import 'dart:typed_data';
 
-import 'package:file_picker/file_picker.dart';
-
 import '../models/video_project.dart';
 import '../utils/video_format.dart';
 import 'api_client.dart';
+import 'chunked_upload.dart';
+import 'media_import_picker.dart';
 
 /// A picked file, reduced to what [MediaImportService] needs. Wraps
 /// [PlatformFile] (an unconstructable `abstract base class` outside its
 /// own package, so it can't be faked directly in tests) so the picker
 /// step stays injectable.
+///
+/// [readRange] reads only the requested byte range rather than the whole
+/// file — [MediaImportService.importVideo] uses it to upload in fixed-size
+/// chunks instead of ever materializing a multi-GB video as one buffer.
 class PickedMediaFile {
   final String name;
 
   /// A real on-disk path, when the platform picker returned one — unused
-  /// now that upload always goes through [readAsBytes] (the only option
+  /// now that upload always goes through [readRange] (the only option
   /// that works on every platform, including web).
   final String? path;
-  final Future<Uint8List> Function() readAsBytes;
+  final Future<int> Function() length;
+  final Future<Uint8List> Function(int start, int end) readRange;
 
-  const PickedMediaFile({required this.name, this.path, required this.readAsBytes});
+  const PickedMediaFile({
+    required this.name,
+    this.path,
+    required this.length,
+    required this.readRange,
+  });
 }
 
 /// Lets the user pick a video file and uploads it to the LuxStudio backend
@@ -40,24 +50,22 @@ class MediaImportService {
   final Future<PickedMediaFile?> Function() _pickFile;
 
   static Future<PickedMediaFile?> _defaultPickFile() async {
-    final file = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: ['mp4', 'mov', 'mkv'],
-    );
+    final file = await pickVideoFile(allowedExtensions: ['mp4', 'mov', 'mkv']);
     if (file == null) return null;
-    return PickedMediaFile(name: file.name, path: file.path, readAsBytes: file.readAsBytes);
+    return PickedMediaFile(
+      name: file.name,
+      path: file.path,
+      length: file.length,
+      readRange: (start, end) => file.xFile.openRead(start, end).single,
+    );
   }
 
   /// Returns the imported [VideoProject], or `null` if the user cancelled
   /// the picker. Throws if the picked file couldn't be read/uploaded.
   ///
-  /// [onProgress], when given, reports real bytes-sent-over-the-wire
-  /// progress for the upload — a 1-2 hour sermon video is easily multiple
-  /// GB, so this also matters for *how* the upload is sent, not just
-  /// visibility: see [ApiClient.postMultipart]'s doc for why the
-  /// progress-tracked path (web only) is the one that avoids doubling
-  /// memory for a file this size, where the plain `package:http` path can
-  /// crash the tab.
+  /// [onProgress], when given, reports bytes-uploaded progress as each
+  /// chunk completes (see `chunked_upload.dart` for why the upload itself
+  /// is chunked, not just why this reports progress).
   Future<VideoProject?> importVideo({void Function(int sent, int total)? onProgress}) async {
     final picked = await _pickFile();
     if (picked == null) return null;
@@ -65,13 +73,16 @@ class MediaImportService {
       throw Exception(unsupportedVideoFormatMessage(picked.name));
     }
 
-    final bytes = await picked.readAsBytes();
-    final response = await _apiClient.postMultipart(
-      '/projects',
-      fieldName: 'file',
-      bytes: bytes,
-      filename: picked.name,
+    final length = await picked.length();
+    final uploadId = await uploadInChunks(
+      apiClient: _apiClient,
+      length: length,
+      readRange: picked.readRange,
       onProgress: onProgress,
+    );
+    final response = await _apiClient.postJson(
+      '/projects/from-upload?upload_id=$uploadId&filename=${Uri.encodeQueryComponent(picked.name)}',
+      const {},
     );
 
     final durationMs = (response['durationMs'] as num?)?.toInt();

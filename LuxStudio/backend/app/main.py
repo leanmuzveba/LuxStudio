@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import storage
 from app.config import get_settings
-from app.routers import analyse, auth, brand, exports, library, projects, social
+from app.routers import analyse, auth, brand, exports, library, projects, social, uploads
 
 app = FastAPI(title="LuxStudio Backend")
 
@@ -29,6 +29,7 @@ app.include_router(exports.history_router)
 app.include_router(brand.router)
 app.include_router(auth.router)
 app.include_router(library.router)
+app.include_router(uploads.router)
 
 
 @app.on_event("startup")

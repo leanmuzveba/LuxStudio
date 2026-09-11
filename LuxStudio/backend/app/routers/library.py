@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from app import storage
 from app.config import get_settings
+from app.routers.uploads import take_upload
 from app.services.ffmpeg_client import probe
 
 router = APIRouter(prefix="/library", tags=["library"])
@@ -89,26 +90,14 @@ async def list_assets() -> list[dict]:
     return storage.read_library_index(_ASSETS)
 
 
-@router.post("/assets")
-async def upload_asset(file: UploadFile = File(...), folder_id: str | None = Form(None)) -> dict:
-    asset_id = uuid.uuid4().hex
-    original_filename = file.filename or "asset"
-    suffix = Path(original_filename).suffix or ".mp4"
-    dest = _assets_dir() / f"{asset_id}{suffix}"
-
-    size_bytes = 0
-    with dest.open("wb") as out:
-        while chunk := await file.read(1024 * 1024):
-            size_bytes += len(chunk)
-            out.write(chunk)
-
+def _finish_asset_upload(dest: Path, original_filename: str, folder_id: str | None) -> dict:
     asset: dict[str, Any] = {
-        "id": asset_id,
+        "id": dest.stem,
         "filename": original_filename,
         "stored_filename": dest.name,
         "folder_id": folder_id,
-        "content_type": file.content_type,
-        "size_bytes": size_bytes,
+        "content_type": None,
+        "size_bytes": dest.stat().st_size,
     }
     # Best-effort, same as /projects — a missing ffprobe must never fail
     # the upload itself.
@@ -121,6 +110,40 @@ async def upload_asset(file: UploadFile = File(...), folder_id: str | None = For
     assets.append(asset)
     storage.write_library_index(_ASSETS, assets)
     return asset
+
+
+@router.post("/assets")
+async def upload_asset(file: UploadFile = File(...), folder_id: str | None = Form(None)) -> dict:
+    """Small-file path — see projects.py's create_project for why a large
+    video should go through /assets/from-upload instead."""
+    asset_id = uuid.uuid4().hex
+    original_filename = file.filename or "asset"
+    suffix = Path(original_filename).suffix or ".mp4"
+    dest = _assets_dir() / f"{asset_id}{suffix}"
+
+    with dest.open("wb") as out:
+        while chunk := await file.read(1024 * 1024):
+            out.write(chunk)
+
+    return _finish_asset_upload(dest, original_filename, folder_id)
+
+
+@router.post("/assets/from-upload")
+async def create_asset_from_upload(
+    upload_id: str, filename: str, folder_id: str | None = None
+) -> dict:
+    """Completes a chunked upload (app/routers/uploads.py) into a new
+    library asset."""
+    asset_id = uuid.uuid4().hex
+    suffix = Path(filename).suffix or ".mp4"
+    dest = _assets_dir() / f"{asset_id}{suffix}"
+    try:
+        src = take_upload(upload_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Upload not found") from None
+    src.replace(dest)  # same filesystem — a rename, not a copy
+
+    return _finish_asset_upload(dest, filename, folder_id)
 
 
 @router.delete("/assets/{asset_id}")

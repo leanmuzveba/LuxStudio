@@ -1,11 +1,9 @@
-import 'dart:typed_data';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../main.dart';
 import '../models/library_asset.dart';
 import '../models/library_folder.dart';
+import '../services/media_import_picker.dart';
 import '../state/app_state.dart';
 import '../theme/lux_theme.dart';
 import '../utils/error_presenter.dart';
@@ -53,17 +51,22 @@ class _MediaLibraryDesktopScreenState extends State<MediaLibraryDesktopScreen> {
   }
 
   Future<void> _uploadMedia(AppState appState) async {
-    final file = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: ['mp4', 'mov', 'mkv']);
+    final file = await pickVideoFile(allowedExtensions: ['mp4', 'mov', 'mkv']);
     if (file == null) return;
     if (!mounted) return;
     if (!isSupportedVideoFilename(file.name)) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(unsupportedVideoFormatMessage(file.name))));
       return;
     }
-    final Uint8List bytes = await file.readAsBytes();
+    final length = await file.length();
     if (!mounted) return;
     _showUploadProgressDialog(appState, file.name);
-    await appState.uploadLibraryAsset(bytes, file.name, folderId: _selectedFolderId);
+    await appState.uploadLibraryAsset(
+      filename: file.name,
+      length: length,
+      readRange: (start, end) => file.xFile.openRead(start, end).single,
+      folderId: _selectedFolderId,
+    );
     if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
     if (appState.libraryError != null) {
