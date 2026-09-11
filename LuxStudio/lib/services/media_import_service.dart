@@ -49,7 +49,15 @@ class MediaImportService {
 
   /// Returns the imported [VideoProject], or `null` if the user cancelled
   /// the picker. Throws if the picked file couldn't be read/uploaded.
-  Future<VideoProject?> importVideo() async {
+  ///
+  /// [onProgress], when given, reports real bytes-sent-over-the-wire
+  /// progress for the upload — a 1-2 hour sermon video is easily multiple
+  /// GB, so this also matters for *how* the upload is sent, not just
+  /// visibility: see [ApiClient.postMultipart]'s doc for why the
+  /// progress-tracked path (web only) is the one that avoids doubling
+  /// memory for a file this size, where the plain `package:http` path can
+  /// crash the tab.
+  Future<VideoProject?> importVideo({void Function(int sent, int total)? onProgress}) async {
     final picked = await _pickFile();
     if (picked == null) return null;
 
@@ -59,6 +67,7 @@ class MediaImportService {
       fieldName: 'file',
       bytes: bytes,
       filename: picked.name,
+      onProgress: onProgress,
     );
 
     final durationMs = (response['durationMs'] as num?)?.toInt();

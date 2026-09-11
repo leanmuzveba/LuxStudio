@@ -8,11 +8,23 @@ import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:typed_data';
 
-/// Real upload progress on Flutter Web. `package:http` has no upload-progress
-/// hook (it hands the browser a fully-materialized body), so this builds the
-/// multipart request by hand on a raw `HttpRequest` and listens to
-/// `xhr.upload.onProgress`, which fires from actual bytes-sent-over-the-wire
-/// events — the only way to get a real percentage for a large video upload.
+/// Real upload progress on Flutter Web, via a raw `HttpRequest` + `FormData`.
+///
+/// `package:http`'s `BrowserClient` can't do two things a 1-2 hour sermon
+/// video (multi-GB) needs:
+///  - report upload progress — it's `fetch()`-based, which has no
+///    upload-progress hook at all;
+///  - avoid doubling memory — `BrowserClient.send()` always calls
+///    `request.finalize().toBytes()`, fully re-materializing the encoded
+///    multipart body into ONE new contiguous buffer *on top of* the
+///    Uint8List already held from `readAsBytes()`. For a multi-GB video
+///    that second full copy is enough to crash the tab.
+///
+/// `FormData` + `Blob` avoids that: the browser encodes and streams the
+/// request from the Blob itself, so Dart never holds a second full copy of
+/// the video (an earlier version of this file built the multipart body by
+/// hand into a `BytesBuilder`, which had the exact same doubling problem —
+/// see the commit that replaced it with this).
 Future<Map<String, dynamic>> multipartUploadWithProgress({
   required String url,
   required String fieldName,
@@ -22,12 +34,15 @@ Future<Map<String, dynamic>> multipartUploadWithProgress({
   void Function(int sent, int total)? onProgress,
 }) {
   final completer = Completer<Map<String, dynamic>>();
-  final boundary = '----luxstudio-${DateTime.now().microsecondsSinceEpoch}';
-  final body = _buildMultipartBody(boundary, fieldName, bytes, filename, fields);
+
+  final formData = html.FormData();
+  fields?.forEach(formData.append);
+  formData.appendBlob(fieldName, html.Blob([bytes]), filename);
 
   final xhr = html.HttpRequest();
   xhr.open('POST', url);
-  xhr.setRequestHeader('Content-Type', 'multipart/form-data; boundary=$boundary');
+  // No manual Content-Type: the browser sets the correct
+  // `multipart/form-data; boundary=...` header itself for a FormData body.
 
   xhr.upload.onProgress.listen((event) {
     if (onProgress != null && event.lengthComputable) {
@@ -51,31 +66,6 @@ Future<Map<String, dynamic>> multipartUploadWithProgress({
 
   xhr.onError.listen((_) => completer.completeError(Exception('Upload failed: network error')));
 
-  xhr.send(body);
+  xhr.send(formData);
   return completer.future;
-}
-
-Uint8List _buildMultipartBody(
-  String boundary,
-  String fieldName,
-  Uint8List bytes,
-  String filename,
-  Map<String, String>? fields,
-) {
-  final buffer = BytesBuilder();
-  void writeString(String s) => buffer.add(utf8.encode(s));
-
-  fields?.forEach((key, value) {
-    writeString('--$boundary\r\n');
-    writeString('Content-Disposition: form-data; name="$key"\r\n\r\n');
-    writeString('$value\r\n');
-  });
-
-  writeString('--$boundary\r\n');
-  writeString('Content-Disposition: form-data; name="$fieldName"; filename="$filename"\r\n');
-  writeString('Content-Type: application/octet-stream\r\n\r\n');
-  buffer.add(bytes);
-  writeString('\r\n--$boundary--\r\n');
-
-  return buffer.toBytes();
 }

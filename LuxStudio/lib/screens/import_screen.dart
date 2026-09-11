@@ -34,6 +34,7 @@ class _ImportScreenState extends State<ImportScreen> {
   late final MediaImportService _mediaImportService =
       widget._injectedMediaImportService ?? MediaImportService();
   bool _importing = false;
+  double _importProgress = 0.0;
   String? _importError;
   String? _selectedRecentId;
 
@@ -54,9 +55,14 @@ class _ImportScreenState extends State<ImportScreen> {
     setState(() {
       _importError = null;
       _importing = true;
+      _importProgress = 0.0;
     });
     try {
-      final project = await _mediaImportService.importVideo();
+      final project = await _mediaImportService.importVideo(
+        onProgress: (sent, total) {
+          if (mounted) setState(() => _importProgress = total > 0 ? sent / total : 0.0);
+        },
+      );
       if (!mounted) return;
       if (project == null) return; // user cancelled the picker
 
@@ -222,9 +228,17 @@ class _ImportScreenState extends State<ImportScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const CircularProgressIndicator(color: LuxColors.gold),
+                              CircularProgressIndicator(
+                                color: LuxColors.gold,
+                                value: _importProgress > 0 ? _importProgress : null,
+                              ),
                               const SizedBox(height: 16),
-                              Text('Uploading video…', style: LuxText.manrope(size: 13, color: LuxColors.textSecondary)),
+                              Text(
+                                _importProgress > 0
+                                    ? 'Uploading video… ${(_importProgress * 100).clamp(0, 100).toStringAsFixed(0)}%'
+                                    : 'Uploading video…',
+                                style: LuxText.manrope(size: 13, color: LuxColors.textSecondary),
+                              ),
                             ],
                           ),
                         ),
