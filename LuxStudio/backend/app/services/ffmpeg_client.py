@@ -115,8 +115,27 @@ def _seconds(ms: int) -> str:
     return f"{ms / 1000:.3f}"
 
 
-def _between_clause(r: dict[str, Any]) -> str:
-    return f"between(t,{_seconds(r['startMs'])},{_seconds(r['endMs'])})"
+def _kept_segments(ranges_to_remove: list[dict[str, Any]]) -> list[tuple[int, int | None]]:
+    """The complement of ranges_to_remove, as (start_ms, end_ms) spans to
+    keep — end_ms is None for the trailing span, meaning "to end of file"
+    (its actual length isn't known here, and the concat demuxer accepts an
+    omitted outpoint to mean exactly that)."""
+    ordered = sorted(ranges_to_remove, key=lambda r: r["startMs"])
+    segments: list[tuple[int, int | None]] = []
+    cursor = 0
+    for r in ordered:
+        if r["startMs"] > cursor:
+            segments.append((cursor, r["startMs"]))
+        cursor = max(cursor, r["endMs"])
+    segments.append((cursor, None))
+    return segments
+
+
+def _escape_concat_value(value: str) -> str:
+    """Escapes a value for the ffconcat file format's single-quoted
+    tokens, where backslash is the only escape character (not the POSIX
+    shell '\\'' trick)."""
+    return value.replace("\\", "\\\\").replace("'", "\\'")
 
 
 _WEB_SAFE_CODEC_ARGS = [
@@ -160,42 +179,43 @@ def remove_ranges(
         )
         return
 
-    expr = "not(" + "+".join(_between_clause(r) for r in ranges_to_remove) + ")"
-    # expr contains commas (from between(t,start,end)'s own arguments), which
-    # ffmpeg's filtergraph parser would otherwise read as filter separators —
-    # e.g. "select=not(between(t,1.1,2.3))" gets split into a bogus filter
-    # named "1.1". Single-quoting the whole expression value stops that.
-    vf_script = f"select='{expr}',setpts=N/FRAME_RATE/TB"
-    af_script = f"aselect='{expr}',asetpts=N/SR/TB"
+    # A sermon-length source can have hundreds of silence ranges. An earlier
+    # version of this built one giant select/aselect filter expression
+    # (a between(t,start,end) clause per range) and passed it inline via
+    # -vf/-af — for enough ranges that blows past Windows' ~32K CreateProcess
+    # command-line limit (WinError 206). This build of ffmpeg also doesn't
+    # support -filter_script/-filter_complex_script (file-based filter
+    # options) to work around that, so instead: list the *kept* spans (the
+    # complement of ranges_to_remove) in an ffconcat file and let the concat
+    # demuxer do the cutting — a long list only grows a file, never the
+    # command line, and the demuxer is a universally-supported core feature.
+    source_abs = str(Path(source_path).resolve()).replace("\\", "/")
+    lines = ["ffconcat version 1.0"]
+    for start_ms, end_ms in _kept_segments(ranges_to_remove):
+        lines.append(f"file '{_escape_concat_value(source_abs)}'")
+        lines.append(f"inpoint {_seconds(start_ms)}")
+        if end_ms is not None:
+            lines.append(f"outpoint {_seconds(end_ms)}")
 
-    # A long sermon can have hundreds of silence ranges, so `expr` can run to
-    # tens of thousands of characters. Passing that inline via -vf/-af blows
-    # past Windows' ~32K CreateProcess command-line limit (WinError 206:
-    # "The filename or extension is too long"). -filter_script reads the
-    # identical syntax from a file instead of the command line, so it has no
-    # such limit.
-    with tempfile.NamedTemporaryFile("w", suffix=".vf", delete=False) as vf_file:
-        vf_file.write(vf_script)
-        vf_path = vf_file.name
-    with tempfile.NamedTemporaryFile("w", suffix=".af", delete=False) as af_file:
-        af_file.write(af_script)
-        af_path = af_file.name
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".ffconcat", delete=False
+    ) as concat_file:
+        concat_file.write("\n".join(lines) + "\n")
+        concat_path = concat_file.name
 
     try:
         _run(
             [
                 "ffmpeg", "-y",
-                "-i", str(source_path),
-                "-filter_script:v", vf_path,
-                "-filter_script:a", af_path,
+                "-f", "concat", "-safe", "0",
+                "-i", concat_path,
                 *_WEB_SAFE_CODEC_ARGS,
                 str(output_path),
             ],
             "ffmpeg silence removal",
         )
     finally:
-        Path(vf_path).unlink(missing_ok=True)
-        Path(af_path).unlink(missing_ok=True)
+        Path(concat_path).unlink(missing_ok=True)
 
 
 def extract_audio(source_path: str | Path, output_path: str | Path) -> None:

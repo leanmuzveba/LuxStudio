@@ -3,7 +3,12 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from app.services.ffmpeg_client import parse_silence_log, remove_ranges
+from app.services.ffmpeg_client import (
+    _escape_concat_value,
+    _kept_segments,
+    parse_silence_log,
+    remove_ranges,
+)
 
 
 class TestParseSilenceLog:
@@ -44,21 +49,48 @@ class TestParseSilenceLog:
         assert parse_silence_log("") == []
 
 
-class TestRemoveRangesFilterQuoting:
-    def test_single_quotes_the_between_expression(self):
-        """The between(t,start,end) expression contains commas, which
-        ffmpeg's filtergraph parser reads as filter separators unless the
-        whole expression is quoted — regression test for the bug where
-        `select=not(between(t,1.145,2.3))` (unquoted) made ffmpeg treat
-        "1.145" as a bogus filter name and fail with "Filter not found"."""
-        # remove_ranges deletes the -filter_script temp files itself once
-        # ffmpeg returns, so their contents have to be captured while the
-        # mocked subprocess.run call is still executing.
+class TestKeptSegments:
+    """_kept_segments computes the complement of ranges_to_remove — what
+    remove_ranges actually keeps, via the concat demuxer."""
+
+    def test_single_range_produces_a_lead_and_trailing_segment(self):
+        assert _kept_segments([{"startMs": 1000, "endMs": 2000}]) == [(0, 1000), (2000, None)]
+
+    def test_range_starting_at_zero_has_no_lead_segment(self):
+        assert _kept_segments([{"startMs": 0, "endMs": 500}]) == [(500, None)]
+
+    def test_overlapping_ranges_merge_into_one_gap(self):
+        ranges = [{"startMs": 1000, "endMs": 3000}, {"startMs": 2000, "endMs": 4000}]
+        assert _kept_segments(ranges) == [(0, 1000), (4000, None)]
+
+    def test_unsorted_input_is_sorted_before_computing_gaps(self):
+        ranges = [{"startMs": 5000, "endMs": 6000}, {"startMs": 1000, "endMs": 2000}]
+        assert _kept_segments(ranges) == [(0, 1000), (2000, 5000), (6000, None)]
+
+
+class TestEscapeConcatValue:
+    """The ffconcat format only treats backslash as an escape character
+    inside a quoted token (not the POSIX shell '\\'' trick)."""
+
+    def test_escapes_single_quotes(self):
+        assert _escape_concat_value("it's/a/path.mp4") == "it\\'s/a/path.mp4"
+
+    def test_escapes_backslashes(self):
+        assert _escape_concat_value("a\\b") == "a\\\\b"
+
+
+class TestRemoveRangesConcatFile:
+    def test_writes_kept_segments_as_an_ffconcat_file(self):
+        """Regression test for the WinError 206 bug: a long sermon's many
+        silence ranges used to blow past Windows' ~32K CreateProcess
+        command-line limit when passed inline via -vf/-af. remove_ranges
+        now lists the kept spans in a file instead, referenced by a short
+        -i path, so this must never touch the command line's own length."""
         captured = {}
 
         def fake_run(args, **kwargs):
-            captured["vf"] = Path(args[args.index("-filter_script:v") + 1]).read_text()
-            captured["af"] = Path(args[args.index("-filter_script:a") + 1]).read_text()
+            concat_path = args[args.index("-i") + 1]
+            captured["content"] = Path(concat_path).read_text()
             result = MagicMock()
             result.returncode = 0
             return result
@@ -70,5 +102,12 @@ class TestRemoveRangesFilterQuoting:
                 ranges_to_remove=[{"startMs": 1145, "endMs": 2300}],
             )
 
-        assert captured["vf"] == "select='not(between(t,1.145,2.300))',setpts=N/FRAME_RATE/TB"
-        assert captured["af"] == "aselect='not(between(t,1.145,2.300))',asetpts=N/SR/TB"
+        lines = captured["content"].splitlines()
+        assert lines[0] == "ffconcat version 1.0"
+        assert lines[1].startswith("file '")
+        assert lines[1].endswith("in.mp4'")
+        assert lines[2] == "inpoint 0.000"
+        assert lines[3] == "outpoint 1.145"
+        assert lines[5] == "inpoint 2.300"
+        # trailing segment (no known end) must not get an outpoint line
+        assert len(lines) == 6
